@@ -357,19 +357,25 @@ export default function ConfigurationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm gap-4">
+      <div className={cn(
+        "flex justify-between items-center bg-white p-6 rounded-3xl border shadow-sm gap-4",
+        isEditing ? "border-blue-300 ring-2 ring-blue-500/10" : "border-slate-100"
+      )}>
         <div className="flex-1 min-w-0">
           {isEditing ? (
-            <input
-              value={plan?.name ?? ''}
-              onChange={(e) => setPlan(prev => prev ? { ...prev, name: e.target.value } : prev)}
-              className="text-xl font-bold text-slate-900 border-b-2 border-blue-500 outline-none bg-transparent w-full"
-              placeholder="Plan name..."
-            />
+            <div className="flex items-center gap-2 mb-0.5">
+              <input
+                value={plan?.name ?? ''}
+                onChange={(e) => setPlan(prev => prev ? { ...prev, name: e.target.value } : prev)}
+                className="text-xl font-bold text-slate-900 border-b-2 border-blue-500 outline-none bg-transparent w-full"
+                placeholder="Plan name..."
+              />
+              <span className="shrink-0 text-xs font-semibold text-blue-600 bg-blue-50 border border-blue-200 px-2 py-0.5 rounded-full">Editing</span>
+            </div>
           ) : (
             <h3 className="text-xl font-bold text-slate-900 truncate">{plan?.name}</h3>
           )}
-          <p className="text-slate-500 text-sm">{plan?.items.length} posts scheduled</p>
+          <p className="text-slate-500 text-sm">{plan?.items.length} posts scheduled{isEditing && <span className="ml-2 text-blue-500">· Click Save when done</span>}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
           {isEditing ? (

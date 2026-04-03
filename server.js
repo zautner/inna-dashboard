@@ -8,6 +8,7 @@
  *   API_PORT=3001 node server.js  (API only, alongside Vite dev server)
  */
 import express from 'express';
+import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -21,6 +22,16 @@ const SERVE_STATIC = process.env.API_ONLY !== 'true';
 
 const app = express();
 app.use(express.json());
+
+// Apply rate limiting to all API routes
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 60,             // max 60 requests per minute
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+app.use('/api/', apiLimiter);
 
 // Serve built React app in production
 if (SERVE_STATIC) {
@@ -70,6 +81,14 @@ if (SERVE_STATIC) {
 }
 
 /**
+ * Builds a human-readable caption for a plan item used as context by the bot.
+ */
+function buildPlanItemCaption(planName, item) {
+  const tags = item.tags && item.tags.length ? ` | Tags: ${item.tags.join(', ')}` : '';
+  return `Plan: ${planName} | ${item.day} | ${item.contentTypes.join(', ')}${tags}`;
+}
+
+/**
  * Adds approved plan items that are not yet in the bot queue to media_queue.json.
  * The bot detects items with file_id === null (plan items) and requests media from Inna.
  */
@@ -88,7 +107,6 @@ function queueApprovedItemsForBot(plans) {
     for (const item of plan.items) {
       if (item.status === 'approved' && !existingPlanItemIds.has(item.id)) {
         const shortId = String(item.id).slice(-8);
-        const tags = item.tags && item.tags.length ? ` | Tags: ${item.tags.join(', ')}` : '';
         botQueue.push({
           id: `pi-${shortId}`,
           plan_item_id: item.id,
@@ -96,7 +114,7 @@ function queueApprovedItemsForBot(plans) {
           plan_name: plan.name,
           file_id: null,
           file_type: item.mediaType === 'any' ? 'photo' : item.mediaType,
-          caption: `Plan: ${plan.name} | ${item.day} | ${item.contentTypes.join(', ')}${tags}`,
+          caption: buildPlanItemCaption(plan.name, item),
           status: 'new',
           generated_text: '',
         });

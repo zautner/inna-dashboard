@@ -200,10 +200,14 @@ async def check_queue_replenishment(context: ContextTypes.DEFAULT_TYPE, chat_id:
 async def post_init(application):
     """Called after the bot starts. Notifies Inna about pending plan items."""
     # Determine the chat ID to use for the notification
-    chat_id = (
-        application.bot_data.get('inna_chat_id')
-        or (int(INNA_CHAT_ID) if INNA_CHAT_ID else None)
-    )
+    chat_id = application.bot_data.get('inna_chat_id')
+    if not chat_id and INNA_CHAT_ID:
+        try:
+            chat_id = int(INNA_CHAT_ID)
+        except ValueError:
+            logging.warning("INNA_CHAT_ID is set but is not a valid integer; skipping startup notification.")
+            return
+
     if not chat_id:
         return
 

@@ -8,6 +8,11 @@ function plansApiPlugin() {
   const PLANS_FILE = path.join(process.cwd(), 'plans.json');
   const BOT_QUEUE_FILE = path.join(process.cwd(), 'bot', 'media_queue.json');
 
+  function buildPlanItemCaption(planName: string, item: any): string {
+    const tags = item.tags && item.tags.length ? ` | Tags: ${(item.tags as string[]).join(', ')}` : '';
+    return `Plan: ${planName} | ${item.day} | ${(item.contentTypes as string[]).join(', ')}${tags}`;
+  }
+
   function queueApprovedItemsForBot(plans: any[]) {
     let botQueue: any[] = [];
     if (fs.existsSync(BOT_QUEUE_FILE)) {
@@ -26,7 +31,7 @@ function plansApiPlugin() {
             plan_name: plan.name,
             file_id: null,
             file_type: item.mediaType === 'any' ? 'photo' : item.mediaType,
-            caption: `Plan: ${plan.name} | ${item.day} | ${item.contentTypes.join(', ')}${item.tags && item.tags.length ? ' | Tags: ' + item.tags.join(', ') : ''}`,
+            caption: buildPlanItemCaption(plan.name, item),
             status: 'new',
             generated_text: '',
           });

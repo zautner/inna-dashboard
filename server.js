@@ -41,6 +41,21 @@ if (SERVE_STATIC) {
   }
 }
 
+// GET /api/queue-stats — return per-status counts from the bot queue
+app.get('/api/queue-stats', (_req, res) => {
+  try {
+    const queue = fs.existsSync(BOT_QUEUE_FILE)
+      ? JSON.parse(fs.readFileSync(BOT_QUEUE_FILE, 'utf-8'))
+      : [];
+    const inQueue = queue.filter(i => ['new', 'waiting_media'].includes(i.status)).length;
+    const draftsPending = queue.filter(i => ['draft', 'rethinking'].includes(i.status)).length;
+    const approved = queue.filter(i => i.status === 'approved').length;
+    res.json({ inQueue, draftsPending, approved });
+  } catch {
+    res.json({ inQueue: 0, draftsPending: 0, approved: 0 });
+  }
+});
+
 // GET /api/plans — load all saved plans
 app.get('/api/plans', (_req, res) => {
   try {

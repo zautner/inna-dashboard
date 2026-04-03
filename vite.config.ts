@@ -47,6 +47,21 @@ function plansApiPlugin() {
   return {
     name: 'plans-api',
     configureServer(server: any) {
+      server.middlewares.use('/api/queue-stats', (_req: any, res: any) => {
+        res.setHeader('Content-Type', 'application/json');
+        try {
+          const queue: any[] = fs.existsSync(BOT_QUEUE_FILE)
+            ? JSON.parse(fs.readFileSync(BOT_QUEUE_FILE, 'utf-8'))
+            : [];
+          const inQueue = queue.filter(i => ['new', 'waiting_media'].includes(i.status)).length;
+          const draftsPending = queue.filter(i => ['draft', 'rethinking'].includes(i.status)).length;
+          const approved = queue.filter(i => i.status === 'approved').length;
+          res.end(JSON.stringify({ inQueue, draftsPending, approved }));
+        } catch {
+          res.end(JSON.stringify({ inQueue: 0, draftsPending: 0, approved: 0 }));
+        }
+      });
+
       server.middlewares.use('/api/plans', (req: any, res: any) => {
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
@@ -84,6 +99,7 @@ export default defineConfig(({mode}) => {
     plugins: [react(), tailwindcss(), plansApiPlugin()],
     define: {
       'process.env.GEMINI_API_KEY': JSON.stringify(env.GEMINI_API_KEY),
+      'process.env.TELEGRAM_BOT_USERNAME': JSON.stringify(env.TELEGRAM_BOT_USERNAME ?? ''),
     },
     resolve: {
       alias: {

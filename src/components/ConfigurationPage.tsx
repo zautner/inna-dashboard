@@ -1,17 +1,21 @@
 import React, { useState } from 'react';
-import { Plus, Trash2, Upload, Image as ImageIcon, Video, CalendarDays, CheckCircle2, Clock, XCircle, Send } from 'lucide-react';
+import { Plus, Trash2, Upload, Image as ImageIcon, Video, CalendarDays, CheckCircle2, Clock, XCircle, Send, X } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export type PlanType = 'week' | 'month' | 'quarter';
 export type MediaType = 'photo' | 'video' | 'any';
+export type ContentType = 'Instagram Feed' | 'Instagram Story' | 'Instagram Reel' | 'Facebook Post' | 'TikTok Video';
+export const CONTENT_TYPES: ContentType[] = ['Instagram Feed', 'Instagram Story', 'Instagram Reel', 'Facebook Post', 'TikTok Video'];
 export type PostStatus = 'preparing' | 'waiting for approval' | 'approved' | 'posted' | 'canceled';
 
 export interface PlanItem {
   id: string;
   day: string;
   mediaType: MediaType;
+  contentTypes: ContentType[];
   status: PostStatus;
   mediaUrl?: string;
+  tags: string[];
 }
 
 export interface Plan {
@@ -20,15 +24,38 @@ export interface Plan {
   items: PlanItem[];
 }
 
+const getDefaultRequirements = (type: PlanType): {day: string, mediaType: MediaType, contentTypes: ContentType[]}[] => {
+  if (type === 'week') {
+    return [
+      { day: 'Monday', mediaType: 'photo', contentTypes: ['Instagram Feed', 'Facebook Post'] },
+      { day: 'Wednesday', mediaType: 'video', contentTypes: ['Instagram Story'] },
+      { day: 'Friday', mediaType: 'video', contentTypes: ['Instagram Reel', 'TikTok Video'] },
+    ];
+  } else if (type === 'month') {
+    return Array.from({ length: 8 }).map((_, i) => ({
+      day: `Week ${Math.floor(i/2) + 1} - ${i % 2 === 0 ? 'Tuesday' : 'Thursday'}`,
+      mediaType: i % 2 === 0 ? 'photo' : 'video',
+      contentTypes: i % 2 === 0 ? ['Instagram Feed', 'Facebook Post'] : ['Instagram Reel', 'TikTok Video']
+    }));
+  } else {
+    // quarter
+    return Array.from({ length: 12 }).map((_, i) => ({
+      day: `Month ${Math.floor(i/4) + 1}, Week ${(i%4) + 1}`,
+      mediaType: 'any',
+      contentTypes: ['Facebook Post', 'Instagram Feed']
+    }));
+  }
+};
+
 export default function ConfigurationPage() {
   const [plan, setPlan] = useState<Plan | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   
   // Form state
   const [planType, setPlanType] = useState<PlanType>('week');
-  const [requirements, setRequirements] = useState<{day: string, mediaType: MediaType}[]>([
-    { day: 'Monday', mediaType: 'photo' }
-  ]);
+  const [requirements, setRequirements] = useState<{day: string, mediaType: MediaType, contentTypes: ContentType[]}[]>(
+    getDefaultRequirements('week')
+  );
 
   const handleCreatePlan = () => {
     const newPlan: Plan = {
@@ -38,7 +65,9 @@ export default function ConfigurationPage() {
         id: `${Date.now()}-${i}`,
         day: req.day,
         mediaType: req.mediaType,
-        status: 'preparing'
+        contentTypes: req.contentTypes,
+        status: 'preparing',
+        tags: []
       }))
     };
     setPlan(newPlan);
@@ -73,6 +102,35 @@ export default function ConfigurationPage() {
     });
   };
 
+  const handleAddTag = (itemId: string, tag: string) => {
+    if (!tag.trim()) return;
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item => 
+          item.id === itemId && !(item.tags || []).includes(tag.trim())
+            ? { ...item, tags: [...(item.tags || []), tag.trim()] } 
+            : item
+        )
+      };
+    });
+  };
+
+  const handleRemoveTag = (itemId: string, tagToRemove: string) => {
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item => 
+          item.id === itemId 
+            ? { ...item, tags: (item.tags || []).filter(t => t !== tagToRemove) } 
+            : item
+        )
+      };
+    });
+  };
+
   if (!plan && !isCreating) {
     return (
       <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-12 text-center max-w-2xl mx-auto shadow-sm">
@@ -94,7 +152,7 @@ export default function ConfigurationPage() {
 
   if (isCreating) {
     return (
-      <div className="max-w-2xl mx-auto bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+      <div className="max-w-3xl mx-auto bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
         <h3 className="text-2xl font-bold mb-6">Create New Plan</h3>
         
         <div className="mb-6">
@@ -103,7 +161,10 @@ export default function ConfigurationPage() {
             {(['week', 'month', 'quarter'] as PlanType[]).map(type => (
               <button
                 key={type}
-                onClick={() => setPlanType(type)}
+                onClick={() => {
+                  setPlanType(type);
+                  setRequirements(getDefaultRequirements(type));
+                }}
                 className={cn(
                   "flex-1 py-3 rounded-xl border font-semibold capitalize transition-all",
                   planType === type 
@@ -121,7 +182,7 @@ export default function ConfigurationPage() {
           <div className="flex justify-between items-center mb-4">
             <label className="block text-sm font-bold text-slate-700">Post Requirements</label>
             <button 
-              onClick={() => setRequirements([...requirements, { day: '', mediaType: 'any' }])}
+              onClick={() => setRequirements([...requirements, { day: '', mediaType: 'any', contentTypes: ['Instagram Feed'] }])}
               className="text-sm text-blue-500 font-semibold flex items-center gap-1 hover:text-blue-600"
             >
               <Plus size={16} /> Add Post
@@ -130,38 +191,69 @@ export default function ConfigurationPage() {
           
           <div className="space-y-3">
             {requirements.map((req, index) => (
-              <div key={index} className="flex gap-3 items-center bg-slate-50 p-3 rounded-xl border border-slate-100">
-                <input 
-                  type="text" 
-                  placeholder="Day (e.g., Monday, Day 5)" 
-                  value={req.day}
-                  onChange={(e) => {
-                    const newReqs = [...requirements];
-                    newReqs[index].day = e.target.value;
-                    setRequirements(newReqs);
-                  }}
-                  className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                />
-                <select 
-                  value={req.mediaType}
-                  onChange={(e) => {
-                    const newReqs = [...requirements];
-                    newReqs[index].mediaType = e.target.value as MediaType;
-                    setRequirements(newReqs);
-                  }}
-                  className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                >
-                  <option value="photo">Photo</option>
-                  <option value="video">Video</option>
-                  <option value="any">Any Media</option>
-                </select>
-                <button 
-                  onClick={() => setRequirements(requirements.filter((_, i) => i !== index))}
-                  className="p-2 text-slate-400 hover:text-red-500 transition-colors"
-                  disabled={requirements.length === 1}
-                >
-                  <Trash2 size={18} />
-                </button>
+              <div key={index} className="flex flex-col gap-3 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                <div className="flex gap-3 items-center">
+                  <input 
+                    type="text" 
+                    placeholder="Day (e.g., Monday, Day 5)" 
+                    value={req.day}
+                    onChange={(e) => {
+                      const newReqs = [...requirements];
+                      newReqs[index].day = e.target.value;
+                      setRequirements(newReqs);
+                    }}
+                    className="flex-1 bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  />
+                  <select 
+                    value={req.mediaType}
+                    onChange={(e) => {
+                      const newReqs = [...requirements];
+                      newReqs[index].mediaType = e.target.value as MediaType;
+                      setRequirements(newReqs);
+                    }}
+                    className="bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  >
+                    <option value="photo">Photo</option>
+                    <option value="video">Video</option>
+                    <option value="any">Any Media</option>
+                  </select>
+                  <button 
+                    onClick={() => setRequirements(requirements.filter((_, i) => i !== index))}
+                    className="p-2 text-slate-400 hover:text-red-500 transition-colors"
+                    disabled={requirements.length === 1}
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {CONTENT_TYPES.map(ct => {
+                    const isSelected = req.contentTypes.includes(ct);
+                    return (
+                      <button
+                        key={ct}
+                        onClick={() => {
+                          const newReqs = [...requirements];
+                          if (isSelected) {
+                            if (req.contentTypes.length > 1) {
+                              newReqs[index].contentTypes = req.contentTypes.filter(t => t !== ct);
+                            }
+                          } else {
+                            newReqs[index].contentTypes = [...req.contentTypes, ct];
+                          }
+                          setRequirements(newReqs);
+                        }}
+                        className={cn(
+                          "px-3 py-1.5 text-xs font-medium rounded-lg border transition-all",
+                          isSelected 
+                            ? "bg-blue-500 text-white border-blue-500 shadow-sm" 
+                            : "bg-white text-slate-600 border-slate-200 hover:border-blue-300 hover:bg-blue-50"
+                        )}
+                      >
+                        {ct}
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             ))}
           </div>
@@ -207,11 +299,20 @@ export default function ConfigurationPage() {
           return (
             <div key={item.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm">
-                    {item.mediaType === 'video' ? <Video size={16} /> : <ImageIcon size={16} />}
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm shrink-0">
+                    {item.mediaType === 'video' ? <Video size={18} /> : <ImageIcon size={18} />}
                   </div>
-                  <span className="font-bold text-slate-900">{item.day || 'Unspecified Day'}</span>
+                  <div>
+                    <span className="font-bold text-slate-900 block leading-tight mb-1">{item.day || 'Unspecified Day'}</span>
+                    <div className="flex flex-wrap gap-1">
+                      {item.contentTypes.map(ct => (
+                        <span key={ct} className="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md font-medium whitespace-nowrap">
+                          {ct}
+                        </span>
+                      ))}
+                    </div>
+                  </div>
                 </div>
                 <StatusBadge status={item.status} />
               </div>
@@ -251,6 +352,39 @@ export default function ConfigurationPage() {
                     />
                   </label>
                 )}
+
+                <div className="mb-4">
+                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Context Tags</label>
+                  <div className="flex flex-wrap gap-2 mb-2">
+                    {(item.tags || []).map(tag => (
+                      <span key={tag} className="flex items-center gap-1 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg text-sm font-medium border border-slate-200">
+                        {tag}
+                        {isEditable && (
+                          <button onClick={() => handleRemoveTag(item.id, tag)} className="text-slate-400 hover:text-red-500 transition-colors">
+                            <X size={14} />
+                          </button>
+                        )}
+                      </span>
+                    ))}
+                    {(item.tags || []).length === 0 && !isEditable && (
+                      <span className="text-sm text-slate-400 italic">No tags added</span>
+                    )}
+                  </div>
+                  {isEditable && (
+                    <input 
+                      type="text" 
+                      placeholder="Add a tag and press Enter..." 
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleAddTag(item.id, e.currentTarget.value);
+                          e.currentTarget.value = '';
+                        }
+                      }}
+                    />
+                  )}
+                </div>
 
                 {/* Actions based on status */}
                 <div className="mt-auto pt-4 border-t border-slate-50 flex flex-wrap gap-2">

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Upload, Image as ImageIcon, Video, CalendarDays, CheckCircle2, Clock, XCircle, Send, X, Save, Pencil, ArrowLeft } from 'lucide-react';
+import { Plus, Trash2, Upload, Image as ImageIcon, Video, CalendarDays, CheckCircle2, Clock, XCircle, Send, X, Save, Pencil, ArrowLeft, HelpCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export type PlanType = 'week' | 'month' | 'quarter';
@@ -54,6 +54,7 @@ export default function ConfigurationPage() {
   const [isCreating, setIsCreating] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   // Form state
   const [planType, setPlanType] = useState<PlanType>('week');
@@ -393,8 +394,60 @@ export default function ConfigurationPage() {
           >
             <ArrowLeft size={15} /> Plans
           </button>
+          <button
+            onClick={() => setShowHelp(v => !v)}
+            className={cn(
+              "text-sm font-medium px-3 py-2 rounded-lg transition-all flex items-center gap-1",
+              showHelp ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
+            )}
+            title="How does approval work?"
+          >
+            <HelpCircle size={15} /> Help
+          </button>
         </div>
       </div>
+
+      {showHelp && (
+        <div className="bg-blue-50 border border-blue-100 rounded-3xl p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-blue-700 font-bold text-base">
+              <HelpCircle size={18} />
+              How does Submit for Approval work?
+            </div>
+            <button
+              onClick={() => setShowHelp(false)}
+              className="text-blue-400 hover:text-blue-700 transition-colors rounded-lg p-1 hover:bg-blue-100"
+            >
+              <X size={16} />
+            </button>
+          </div>
+          <ol className="space-y-3 text-sm text-blue-800">
+            <li className="flex gap-3">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">1</span>
+              <span><strong>Upload media</strong> to an item — the "Submit for Approval" button only becomes active once a photo or video has been attached.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">2</span>
+              <span><strong>Click "Submit for Approval"</strong> — the item moves to <em>Waiting for Approval</em> status. Approve / Cancel buttons appear. No data is sent to the server yet.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">3</span>
+              <span><strong>Click "Save"</strong> in the plan header — all changes (including the new status) are sent to the server and written to <code className="bg-blue-100 px-1 rounded">plans.json</code>.</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">4</span>
+              <span><strong>Approve the item</strong> (click Approve, then Save) — once an item reaches <em>Approved</em> status, the server automatically adds it to the Telegram bot queue (<code className="bg-blue-100 px-1 rounded">media_queue.json</code>).</span>
+            </li>
+            <li className="flex gap-3">
+              <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">5</span>
+              <span><strong>The bot notifies Inna</strong> — the Telegram bot picks up the queued item, asks Gemini to generate post copy, and sends the result to Inna for a final sign-off before posting.</span>
+            </li>
+          </ol>
+          <p className="text-xs text-blue-500 pt-1 border-t border-blue-100">
+            💡 Tip: "Submit for Approval" only changes local state — always remember to <strong>Save</strong> after submitting so your changes are persisted.
+          </p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {plan?.items.map(item => {

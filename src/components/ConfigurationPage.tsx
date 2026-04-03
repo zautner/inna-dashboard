@@ -185,6 +185,10 @@ export default function ConfigurationPage() {
   if (!plan && !isCreating) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
+        <PlanActionBar
+          canBack={false} canNew={true} canEdit={false} canSave={false} isSaving={false} canHelp={false} showHelp={false}
+          onBack={() => {}} onNew={() => setIsCreating(true)} onEdit={() => {}} onSave={() => {}} onHelp={() => {}}
+        />
         {savedPlans.length > 0 && (
           <div>
             <h3 className="text-lg font-bold text-slate-900 mb-3">Saved Plans</h3>
@@ -230,7 +234,12 @@ export default function ConfigurationPage() {
 
   if (isCreating) {
     return (
-      <div className="max-w-3xl mx-auto bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
+      <div className="space-y-4">
+        <PlanActionBar
+          canBack={true} canNew={false} canEdit={false} canSave={false} isSaving={false} canHelp={false} showHelp={false}
+          onBack={() => setIsCreating(false)} onNew={() => {}} onEdit={() => {}} onSave={() => {}} onHelp={() => {}}
+        />
+        <div className="max-w-3xl mx-auto bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
         <h3 className="text-2xl font-bold mb-6">Create New Plan</h3>
         
         <div className="mb-6">
@@ -351,14 +360,29 @@ export default function ConfigurationPage() {
             Generate Plan
           </button>
         </div>
+        </div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
+      <PlanActionBar
+        canBack={true}
+        canNew={!isEditing}
+        canEdit={!isEditing}
+        canSave={isEditing}
+        isSaving={isSaving}
+        canHelp={true}
+        showHelp={showHelp}
+        onBack={() => { setPlan(null); setIsEditing(false); }}
+        onNew={() => { setPlan(null); setIsEditing(false); setIsCreating(true); }}
+        onEdit={() => setIsEditing(true)}
+        onSave={handleSavePlan}
+        onHelp={() => setShowHelp(v => !v)}
+      />
       <div className={cn(
-        "flex justify-between items-center bg-white p-6 rounded-3xl border shadow-sm gap-4",
+        "bg-white p-6 rounded-3xl border shadow-sm",
         isEditing ? "border-blue-300 ring-2 ring-blue-500/10" : "border-slate-100"
       )}>
         <div className="flex-1 min-w-0">
@@ -376,40 +400,6 @@ export default function ConfigurationPage() {
             <h3 className="text-xl font-bold text-slate-900 truncate">{plan?.name}</h3>
           )}
           <p className="text-slate-500 text-sm">{plan?.items.length} posts scheduled{isEditing && <span className="ml-2 text-blue-500">· Click Save when done</span>}</p>
-        </div>
-        <div className="flex items-center gap-2 shrink-0">
-          {isEditing ? (
-            <button
-              onClick={handleSavePlan}
-              disabled={isSaving}
-              className="bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-600 transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-60"
-            >
-              <Save size={15} /> {isSaving ? 'Saving…' : 'Save'}
-            </button>
-          ) : (
-            <button
-              onClick={() => setIsEditing(true)}
-              className="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all flex items-center gap-1.5"
-            >
-              <Pencil size={15} /> Edit
-            </button>
-          )}
-          <button
-            onClick={() => { setPlan(null); setIsEditing(false); }}
-            className="text-sm text-slate-500 hover:text-slate-900 font-medium px-3 py-2 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-1"
-          >
-            <ArrowLeft size={15} /> Plans
-          </button>
-          <button
-            onClick={() => setShowHelp(v => !v)}
-            className={cn(
-              "text-sm font-medium px-3 py-2 rounded-lg transition-all flex items-center gap-1",
-              showHelp ? "bg-blue-50 text-blue-600" : "text-slate-500 hover:text-slate-900 hover:bg-slate-50"
-            )}
-            title="How does approval work?"
-          >
-            <HelpCircle size={15} /> Help
-          </button>
         </div>
       </div>
 
@@ -592,6 +582,93 @@ export default function ConfigurationPage() {
           );
         })}
       </div>
+    </div>
+  );
+}
+
+interface PlanActionBarProps {
+  canBack: boolean;
+  canNew: boolean;
+  canEdit: boolean;
+  canSave: boolean;
+  isSaving: boolean;
+  canHelp: boolean;
+  showHelp: boolean;
+  onBack: () => void;
+  onNew: () => void;
+  onEdit: () => void;
+  onSave: () => void;
+  onHelp: () => void;
+}
+
+function PlanActionBar({ canBack, canNew, canEdit, canSave, isSaving, canHelp, showHelp, onBack, onNew, onEdit, onSave, onHelp }: PlanActionBarProps) {
+  return (
+    <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-2 flex items-center gap-1 flex-wrap">
+      <button
+        onClick={onBack}
+        disabled={!canBack}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all",
+          canBack ? "text-slate-600 hover:bg-slate-50 hover:text-slate-900" : "text-slate-400 opacity-40 cursor-not-allowed"
+        )}
+      >
+        <ArrowLeft size={15} /> Back
+      </button>
+
+      <div className="w-px h-5 bg-slate-100 mx-1" />
+
+      <button
+        onClick={onNew}
+        disabled={!canNew}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all",
+          canNew ? "text-blue-600 hover:bg-blue-50" : "text-blue-400 opacity-40 cursor-not-allowed"
+        )}
+      >
+        <Plus size={15} /> New Plan
+      </button>
+
+      <button
+        onClick={onEdit}
+        disabled={!canEdit}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all",
+          canEdit ? "bg-slate-100 text-slate-700 hover:bg-slate-200" : "bg-slate-50 text-slate-400 opacity-40 cursor-not-allowed"
+        )}
+      >
+        <Pencil size={15} /> Edit
+      </button>
+
+      <button
+        onClick={onSave}
+        disabled={!canSave || isSaving}
+        className={cn(
+          "flex items-center gap-1.5 px-4 py-2 rounded-xl text-sm font-semibold transition-all shadow-sm",
+          canSave && !isSaving
+            ? "bg-blue-500 text-white hover:bg-blue-600"
+            : "bg-blue-200 text-blue-100 opacity-40 cursor-not-allowed shadow-none"
+        )}
+      >
+        <Save size={15} /> {isSaving ? 'Saving…' : 'Save'}
+      </button>
+
+      <div className="ml-auto" />
+
+      <button
+        onClick={onHelp}
+        disabled={!canHelp}
+        className={cn(
+          "flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium transition-all",
+          !canHelp
+            ? "text-slate-400 opacity-40 cursor-not-allowed"
+            : showHelp
+            ? "bg-blue-50 text-blue-600"
+            : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
+        )}
+        title="How does approval work?"
+      >
+        <HelpCircle size={15} /> Help
+      </button>
     </div>
   );
 }

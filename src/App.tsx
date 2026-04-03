@@ -21,6 +21,8 @@ import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import ConfigurationPage from './components/ConfigurationPage';
 
+const APP_VERSION = '1.0.0';
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'configuration'>('dashboard');
 
@@ -56,7 +58,7 @@ export default function App() {
             </div>
             <div>
               <h1 className="font-bold text-lg leading-tight">Inna AI</h1>
-              <p className="text-xs text-slate-400">Social Media Agent</p>
+              <p className="text-xs text-slate-400">Social Media Agent · v{APP_VERSION}</p>
             </div>
           </div>
         </div>
@@ -110,6 +112,7 @@ export default function App() {
             </p>
           </div>
           <div className="flex items-center gap-4">
+            <span className="text-xs text-slate-400 font-mono hidden sm:inline">v{APP_VERSION}</span>
             <button className="p-2 text-slate-400 hover:text-slate-600 transition-colors">
               <Settings size={20} />
             </button>

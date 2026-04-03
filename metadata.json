@@ -1,0 +1,5 @@
+{
+  "name": "Shiatsu Inna AI Agent",
+  "description": "AI-powered social media manager for Inna's Shiatsu practice in Tel Aviv & Gush Dan. Features a Telegram bot for a media-first workflow where Inna uploads photos/videos and the AI generates authentic Hebrew content for review.",
+  "requestFramePermissions": []
+}

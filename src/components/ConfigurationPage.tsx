@@ -378,15 +378,14 @@ export default function ConfigurationPage() {
           <p className="text-slate-500 text-sm">{plan?.items.length} posts scheduled{isEditing && <span className="ml-2 text-blue-500">· Click Save when done</span>}</p>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          {isEditing ? (
-            <button
-              onClick={handleSavePlan}
-              disabled={isSaving}
-              className="bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-600 transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-60"
-            >
-              <Save size={15} /> {isSaving ? 'Saving…' : 'Save'}
-            </button>
-          ) : (
+          <button
+            onClick={handleSavePlan}
+            disabled={isSaving}
+            className="bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-600 transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-60"
+          >
+            <Save size={15} /> {isSaving ? 'Saving…' : 'Save'}
+          </button>
+          {!isEditing && (
             <button
               onClick={() => setIsEditing(true)}
               className="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all flex items-center gap-1.5"

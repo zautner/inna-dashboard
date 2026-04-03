@@ -108,14 +108,14 @@ export default function ConfigurationPage() {
     setIsSaving(true);
     setUploadErrors([]);
 
-    // Upload media for all approved items that still have a pending local file.
+    // Upload media for all items that still have a pending local file.
     // Collect results first, then apply all state changes at once.
     const successfulUploads = new Map<string, string>(); // itemId -> server URL
     const failedItemIds: string[] = [];
 
     for (const [itemId, file] of pendingFiles.entries()) {
       const item = plan.items.find(i => i.id === itemId);
-      if (item && item.status === 'approved') {
+      if (item) {
         try {
           const formData = new FormData();
           formData.append('file', file);
@@ -249,6 +249,90 @@ export default function ConfigurationPage() {
     });
   };
 
+  const handleDeletePlan = async (planId: string) => {
+    if (!window.confirm('Delete this plan? This cannot be undone.')) return;
+    const updatedPlans = savedPlans.filter(p => p.id !== planId);
+    setSavedPlans(updatedPlans);
+    try {
+      const res = await fetch('/api/plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPlans),
+      });
+      if (!res.ok) throw new Error('API error');
+    } catch {
+      localStorage.setItem('inna_plans', JSON.stringify(updatedPlans));
+    }
+  };
+
+  const handleDeleteItem = (itemId: string) => {
+    setPendingFiles(prev => {
+      const next = new Map(prev);
+      next.delete(itemId);
+      return next;
+    });
+    setPlan(prev => {
+      if (!prev) return prev;
+      return { ...prev, items: prev.items.filter(item => item.id !== itemId) };
+    });
+  };
+
+  const handleUpdateItemDay = (itemId: string, day: string) => {
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item => item.id === itemId ? { ...item, day } : item)
+      };
+    });
+  };
+
+  const handleUpdateItemMediaType = (itemId: string, mediaType: MediaType) => {
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item => item.id === itemId ? { ...item, mediaType } : item)
+      };
+    });
+  };
+
+  const handleToggleItemContentType = (itemId: string, contentType: ContentType) => {
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item => {
+          if (item.id !== itemId) return item;
+          const exists = item.contentTypes.includes(contentType);
+          // Require at least one content type to remain on the item
+          if (exists && item.contentTypes.length === 1) return item;
+          return {
+            ...item,
+            contentTypes: exists
+              ? item.contentTypes.filter(ct => ct !== contentType)
+              : [...item.contentTypes, contentType]
+          };
+        })
+      };
+    });
+  };
+
+  const handleAppendItem = () => {
+    const newItem: PlanItem = {
+      id: crypto.randomUUID(),
+      day: '',
+      mediaType: 'any',
+      contentTypes: ['Instagram Feed'],
+      status: 'preparing',
+      tags: []
+    };
+    setPlan(prev => {
+      if (!prev) return prev;
+      return { ...prev, items: [...prev.items, newItem] };
+    });
+  };
+
   if (!plan && !isCreating) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -266,15 +350,26 @@ export default function ConfigurationPage() {
                 return (
                   <div
                     key={p.id}
-                    onClick={() => { setPlan(p); setIsEditing(false); }}
-                    className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm cursor-pointer hover:border-blue-300 hover:shadow-md transition-all"
+                    className="relative bg-white rounded-2xl p-5 border border-slate-100 shadow-sm hover:border-blue-300 hover:shadow-md transition-all group"
                   >
-                    <h4 className="font-bold text-slate-900 truncate">{p.name}</h4>
-                    <p className="text-slate-500 text-sm capitalize mt-0.5">{p.type} plan · {p.items.length} posts</p>
-                    <div className="flex gap-3 mt-3 text-xs font-medium">
-                      <span className="text-green-600">{approvedCount} approved</span>
-                      <span className="text-blue-600">{postedCount} posted</span>
+                    <div
+                      onClick={() => { setPlan(p); setIsEditing(false); }}
+                      className="cursor-pointer"
+                    >
+                      <h4 className="font-bold text-slate-900 truncate pr-8">{p.name}</h4>
+                      <p className="text-slate-500 text-sm capitalize mt-0.5">{p.type} plan · {p.items.length} posts</p>
+                      <div className="flex gap-3 mt-3 text-xs font-medium">
+                        <span className="text-green-600">{approvedCount} approved</span>
+                        <span className="text-blue-600">{postedCount} posted</span>
+                      </div>
                     </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); handleDeletePlan(p.id); }}
+                      className="absolute top-4 right-4 p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all opacity-0 group-hover:opacity-100"
+                      title="Delete plan"
+                    >
+                      <Trash2 size={16} />
+                    </button>
                   </div>
                 );
               })}
@@ -522,27 +617,82 @@ export default function ConfigurationPage() {
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
         {plan?.items.map(item => {
-          const isEditable = item.status === 'preparing' || item.status === 'waiting for approval';
+          const isEditable = item.status === 'preparing' || item.status === 'waiting for approval' || (isEditing && item.status === 'approved');
+          const mediaAccept = item.mediaType === 'video' ? 'video/*' : item.mediaType === 'any' ? 'image/*,video/*' : 'image/*';
           
           return (
             <div key={item.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
-              <div className="p-5 border-b border-slate-50 flex justify-between items-center bg-slate-50/50">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm shrink-0">
-                    {item.mediaType === 'video' ? <Video size={18} /> : <ImageIcon size={18} />}
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-900 block leading-tight mb-1">{item.day || 'Unspecified Day'}</span>
-                    <div className="flex flex-wrap gap-1">
-                      {item.contentTypes.map(ct => (
-                        <span key={ct} className="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md font-medium whitespace-nowrap">
-                          {ct}
-                        </span>
-                      ))}
+              <div className="p-5 border-b border-slate-50 bg-slate-50/50">
+                <div className="flex justify-between items-start gap-2">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    {isEditing ? (
+                      <select
+                        value={item.mediaType}
+                        onChange={(e) => handleUpdateItemMediaType(item.id, e.target.value as MediaType)}
+                        className="h-10 rounded-xl bg-white border border-slate-200 text-slate-600 shadow-sm text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 px-2 shrink-0"
+                        title="Media type"
+                      >
+                        <option value="photo">Photo</option>
+                        <option value="video">Video</option>
+                        <option value="any">Any</option>
+                      </select>
+                    ) : (
+                      <div className="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm shrink-0">
+                        {item.mediaType === 'video' ? <Video size={18} /> : <ImageIcon size={18} />}
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      {isEditing ? (
+                        <input
+                          value={item.day}
+                          onChange={(e) => handleUpdateItemDay(item.id, e.target.value)}
+                          placeholder="Day (e.g., Monday)"
+                          className="font-bold text-slate-900 text-sm border-b border-slate-300 outline-none bg-transparent w-full mb-1 focus:border-blue-500"
+                        />
+                      ) : (
+                        <span className="font-bold text-slate-900 block leading-tight mb-1">{item.day || 'Unspecified Day'}</span>
+                      )}
+                      {isEditing ? (
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {CONTENT_TYPES.map(ct => (
+                            <button
+                              key={ct}
+                              onClick={() => handleToggleItemContentType(item.id, ct)}
+                              className={cn(
+                                "text-[10px] px-1.5 py-0.5 rounded-md font-medium whitespace-nowrap border transition-all",
+                                item.contentTypes.includes(ct)
+                                  ? "bg-blue-500 text-white border-blue-500"
+                                  : "bg-white text-slate-600 border-slate-200 hover:border-blue-300"
+                              )}
+                            >
+                              {ct}
+                            </button>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="flex flex-wrap gap-1">
+                          {item.contentTypes.map(ct => (
+                            <span key={ct} className="text-[10px] px-1.5 py-0.5 bg-slate-200 text-slate-700 rounded-md font-medium whitespace-nowrap">
+                              {ct}
+                            </span>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    {isEditing && (
+                      <button
+                        onClick={() => handleDeleteItem(item.id)}
+                        className="p-1.5 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                        title="Delete item"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    )}
+                    <StatusBadge status={item.status} />
+                  </div>
                 </div>
-                <StatusBadge status={item.status} />
               </div>
               
               <div className="p-5 flex-1 flex flex-col">
@@ -558,7 +708,7 @@ export default function ConfigurationPage() {
                         <span className="flex items-center gap-2 font-medium bg-white/20 px-4 py-2 rounded-xl backdrop-blur-sm">
                           <Upload size={16} /> Change Media
                         </span>
-                        <input type="file" accept={item.mediaType === 'video' ? 'video/*' : 'image/*'} className="hidden" onChange={(e) => handleFileUpload(item.id, e)} />
+                        <input type="file" accept={mediaAccept} className="hidden" onChange={(e) => handleFileUpload(item.id, e)} />
                       </label>
                     )}
                   </div>
@@ -573,7 +723,7 @@ export default function ConfigurationPage() {
                     <span className="font-medium text-sm">Upload {item.mediaType}</span>
                     <input 
                       type="file" 
-                      accept={item.mediaType === 'video' ? 'video/*' : 'image/*'} 
+                      accept={mediaAccept} 
                       className="hidden" 
                       disabled={!isEditable}
                       onChange={(e) => handleFileUpload(item.id, e)} 
@@ -655,6 +805,15 @@ export default function ConfigurationPage() {
             </div>
           );
         })}
+        {isEditing && (
+          <button
+            onClick={handleAppendItem}
+            className="bg-white rounded-3xl border-2 border-dashed border-slate-200 shadow-sm flex flex-col items-center justify-center gap-2 p-8 min-h-[200px] hover:border-blue-400 hover:bg-blue-50 hover:text-blue-500 text-slate-400 transition-all"
+          >
+            <Plus size={28} />
+            <span className="font-medium text-sm">Add Item</span>
+          </button>
+        )}
       </div>
     </div>
   );

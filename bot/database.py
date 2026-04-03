@@ -62,3 +62,11 @@ def get_item(item_id: str) -> dict:
         if item["id"] == item_id:
             return item
     return None
+
+def get_pending_plan_items() -> list:
+    """Returns plan-sourced items that are waiting for media to be supplied by Inna."""
+    db = load_db()
+    return [
+        item for item in db
+        if item.get("plan_item_id") and item.get("status") in ("new", "waiting_media")
+    ]

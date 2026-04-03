@@ -25,6 +25,18 @@ const APP_VERSION = '1.0.0';
 
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'configuration'>('dashboard');
+  const [queueStats, setQueueStats] = useState({ inQueue: 0, draftsPending: 0, approved: 0 });
+
+  useEffect(() => {
+    fetch('/api/queue-stats')
+      .then(r => r.json())
+      .then(data => setQueueStats(data))
+      .catch(err => console.error('Failed to load queue stats:', err));
+  }, []);
+
+  const telegramUrl = process.env.TELEGRAM_BOT_USERNAME
+    ? `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}`
+    : null;
 
   return (
     <div className="min-h-screen text-slate-800 font-sans selection:bg-blue-100">
@@ -140,10 +152,17 @@ export default function App() {
                       The workflow has moved entirely to Telegram. Upload your photos and videos for the upcoming week directly to the bot. It will automatically generate authentic posts and send them back to you for approval.
                     </p>
                     <div className="flex gap-4">
-                      <a href="#" className="bg-white text-blue-600 px-6 py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
-                        <Smartphone size={18} />
-                        Open Telegram Bot
-                      </a>
+                      {telegramUrl ? (
+                        <a href={telegramUrl} target="_blank" rel="noreferrer" className="bg-white text-blue-600 px-6 py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
+                          <Smartphone size={18} />
+                          Open Telegram Bot
+                        </a>
+                      ) : (
+                        <span className="bg-white/50 text-blue-400 px-6 py-3 rounded-xl font-bold flex items-center gap-2 cursor-default select-none">
+                          <Smartphone size={18} />
+                          Open Telegram Bot
+                        </span>
+                      )}
                     </div>
                   </div>
                   <div className="w-full md:w-64 bg-white/10 rounded-2xl p-4 backdrop-blur-sm border border-white/20">
@@ -175,7 +194,7 @@ export default function App() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">In Queue</p>
-                    <p className="text-2xl font-bold text-slate-900">0</p>
+                    <p className="text-2xl font-bold text-slate-900">{queueStats.inQueue}</p>
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
@@ -184,7 +203,7 @@ export default function App() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Drafts Pending</p>
-                    <p className="text-2xl font-bold text-slate-900">0</p>
+                    <p className="text-2xl font-bold text-slate-900">{queueStats.draftsPending}</p>
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
@@ -193,7 +212,7 @@ export default function App() {
                   </div>
                   <div>
                     <p className="text-xs font-bold text-slate-400 uppercase tracking-wider">Approved</p>
-                    <p className="text-2xl font-bold text-slate-900">0</p>
+                    <p className="text-2xl font-bold text-slate-900">{queueStats.approved}</p>
                   </div>
                 </div>
               </div>

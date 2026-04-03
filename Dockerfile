@@ -12,6 +12,10 @@ COPY . .
 ARG GEMINI_API_KEY
 ENV GEMINI_API_KEY=${GEMINI_API_KEY}
 
+# TELEGRAM_BOT_USERNAME is baked into the JS bundle at build time by Vite
+ARG TELEGRAM_BOT_USERNAME
+ENV TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
+
 RUN npm run build
 
 # Stage 2: Serve the built files with nginx

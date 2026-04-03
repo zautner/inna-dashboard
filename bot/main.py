@@ -7,7 +7,7 @@ from database import add_media, get_items_by_status, update_item, get_item, get_
 from gemini_service import generate_post
 
 # Configure logging
-logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.INFO)
+logging.basicConfig(format='%(asctime)s - %(name)s - %(levelname)s - %(message)s', level=logging.DEBUG)
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Welcomes Inna and explains the new media-first workflow."""

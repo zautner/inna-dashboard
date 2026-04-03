@@ -13,6 +13,10 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 # Configuration for how many posts to send to Inna for review at once
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "3"))
 
+# Inna's Telegram chat ID — used to send proactive notifications about plan items.
+# Set this after Inna sends /start once (the ID is printed to the bot log).
+INNA_CHAT_ID = os.getenv("INNA_CHAT_ID", "")
+
 # Inna's business context and voice guidelines
 # This dictionary acts as the source of truth for the AI's persona
 INNA_CONTEXT = {

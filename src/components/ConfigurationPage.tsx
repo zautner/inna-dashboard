@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Upload, Image as ImageIcon, Video, CalendarDays, CheckCircle2, Clock, XCircle, Send, X } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Upload, Image as ImageIcon, Video, CalendarDays, CheckCircle2, Clock, XCircle, Send, X, Save, Pencil, ArrowLeft } from 'lucide-react';
 import { cn } from '../lib/utils';
 
 export type PlanType = 'week' | 'month' | 'quarter';
@@ -20,6 +20,7 @@ export interface PlanItem {
 
 export interface Plan {
   id: string;
+  name: string;
   type: PlanType;
   items: PlanItem[];
 }
@@ -49,17 +50,39 @@ const getDefaultRequirements = (type: PlanType): {day: string, mediaType: MediaT
 
 export default function ConfigurationPage() {
   const [plan, setPlan] = useState<Plan | null>(null);
+  const [savedPlans, setSavedPlans] = useState<Plan[]>([]);
   const [isCreating, setIsCreating] = useState(false);
-  
+  const [isEditing, setIsEditing] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+
   // Form state
   const [planType, setPlanType] = useState<PlanType>('week');
   const [requirements, setRequirements] = useState<{day: string, mediaType: MediaType, contentTypes: ContentType[]}[]>(
     getDefaultRequirements('week')
   );
 
+  // Load plans from API (or localStorage fallback) on mount
+  useEffect(() => {
+    const loadPlans = async () => {
+      try {
+        const res = await fetch('/api/plans');
+        if (!res.ok) throw new Error('API unavailable');
+        const data: Plan[] = await res.json();
+        setSavedPlans(data);
+      } catch {
+        const local = localStorage.getItem('inna_plans');
+        if (local) {
+          try { setSavedPlans(JSON.parse(local)); } catch { /* ignore */ }
+        }
+      }
+    };
+    loadPlans();
+  }, []);
+
   const handleCreatePlan = () => {
     const newPlan: Plan = {
       id: Date.now().toString(),
+      name: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Plan`,
       type: planType,
       items: requirements.map((req, i) => ({
         id: `${Date.now()}-${i}`,
@@ -71,7 +94,34 @@ export default function ConfigurationPage() {
       }))
     };
     setPlan(newPlan);
+    setIsEditing(true);
     setIsCreating(false);
+  };
+
+  const handleSavePlan = async () => {
+    if (!plan) return;
+    setIsSaving(true);
+
+    const updatedPlans = savedPlans.some(p => p.id === plan.id)
+      ? savedPlans.map(p => p.id === plan.id ? plan : p)
+      : [...savedPlans, plan];
+
+    setSavedPlans(updatedPlans);
+    setIsEditing(false);
+
+    try {
+      const res = await fetch('/api/plans', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updatedPlans),
+      });
+      if (!res.ok) throw new Error('API error');
+    } catch {
+      // Fallback: persist in localStorage
+      localStorage.setItem('inna_plans', JSON.stringify(updatedPlans));
+    }
+
+    setIsSaving(false);
   };
 
   const handleFileUpload = (itemId: string, e: React.ChangeEvent<HTMLInputElement>) => {
@@ -133,19 +183,46 @@ export default function ConfigurationPage() {
 
   if (!plan && !isCreating) {
     return (
-      <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-12 text-center max-w-2xl mx-auto shadow-sm">
-        <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
-          <CalendarDays size={32} />
+      <div className="space-y-6 max-w-4xl mx-auto">
+        {savedPlans.length > 0 && (
+          <div>
+            <h3 className="text-lg font-bold text-slate-900 mb-3">Saved Plans</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {savedPlans.map(p => {
+                const approvedCount = p.items.filter(i => i.status === 'approved').length;
+                const postedCount = p.items.filter(i => i.status === 'posted').length;
+                return (
+                  <div
+                    key={p.id}
+                    onClick={() => { setPlan(p); setIsEditing(false); }}
+                    className="bg-white rounded-2xl p-5 border border-slate-100 shadow-sm cursor-pointer hover:border-blue-300 hover:shadow-md transition-all"
+                  >
+                    <h4 className="font-bold text-slate-900 truncate">{p.name}</h4>
+                    <p className="text-slate-500 text-sm capitalize mt-0.5">{p.type} plan · {p.items.length} posts</p>
+                    <div className="flex gap-3 mt-3 text-xs font-medium">
+                      <span className="text-green-600">{approvedCount} approved</span>
+                      <span className="text-blue-600">{postedCount} posted</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
+        <div className="bg-white border-2 border-dashed border-slate-200 rounded-3xl p-12 text-center shadow-sm">
+          <div className="w-16 h-16 bg-blue-50 rounded-full flex items-center justify-center mx-auto mb-4 text-blue-500">
+            <CalendarDays size={32} />
+          </div>
+          <h3 className="text-xl font-bold text-slate-900 mb-2">{savedPlans.length === 0 ? 'No Active Plan' : 'Create Another Plan'}</h3>
+          <p className="text-slate-500 mb-6">Create a new content plan to organize your upcoming posts.</p>
+          <button
+            onClick={() => setIsCreating(true)}
+            className="bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-all shadow-sm flex items-center gap-2 mx-auto"
+          >
+            <Plus size={18} />
+            Create New Plan
+          </button>
         </div>
-        <h3 className="text-xl font-bold text-slate-900 mb-2">No Active Plan</h3>
-        <p className="text-slate-500 mb-6">Create a new content plan to organize your upcoming posts.</p>
-        <button 
-          onClick={() => setIsCreating(true)}
-          className="bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-all shadow-sm flex items-center gap-2 mx-auto"
-        >
-          <Plus size={18} />
-          Create New Plan
-        </button>
       </div>
     );
   }
@@ -279,17 +356,44 @@ export default function ConfigurationPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm">
-        <div>
-          <h3 className="text-xl font-bold text-slate-900 capitalize">{plan?.type} Plan</h3>
+      <div className="flex justify-between items-center bg-white p-6 rounded-3xl border border-slate-100 shadow-sm gap-4">
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <input
+              value={plan?.name ?? ''}
+              onChange={(e) => setPlan(prev => prev ? { ...prev, name: e.target.value } : prev)}
+              className="text-xl font-bold text-slate-900 border-b-2 border-blue-500 outline-none bg-transparent w-full"
+              placeholder="Plan name..."
+            />
+          ) : (
+            <h3 className="text-xl font-bold text-slate-900 truncate">{plan?.name}</h3>
+          )}
           <p className="text-slate-500 text-sm">{plan?.items.length} posts scheduled</p>
         </div>
-        <button 
-          onClick={() => { setPlan(null); setIsCreating(true); }}
-          className="text-sm text-slate-500 hover:text-slate-900 font-medium px-4 py-2 rounded-lg hover:bg-slate-50 transition-all"
-        >
-          Create New Plan
-        </button>
+        <div className="flex items-center gap-2 shrink-0">
+          {isEditing ? (
+            <button
+              onClick={handleSavePlan}
+              disabled={isSaving}
+              className="bg-blue-500 text-white px-4 py-2 rounded-xl text-sm font-semibold hover:bg-blue-600 transition-all shadow-sm flex items-center gap-1.5 disabled:opacity-60"
+            >
+              <Save size={15} /> {isSaving ? 'Saving…' : 'Save'}
+            </button>
+          ) : (
+            <button
+              onClick={() => setIsEditing(true)}
+              className="bg-slate-100 text-slate-700 px-4 py-2 rounded-xl text-sm font-semibold hover:bg-slate-200 transition-all flex items-center gap-1.5"
+            >
+              <Pencil size={15} /> Edit
+            </button>
+          )}
+          <button
+            onClick={() => { setPlan(null); setIsEditing(false); }}
+            className="text-sm text-slate-500 hover:text-slate-900 font-medium px-3 py-2 rounded-lg hover:bg-slate-50 transition-all flex items-center gap-1"
+          >
+            <ArrowLeft size={15} /> Plans
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">

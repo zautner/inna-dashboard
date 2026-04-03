@@ -55,6 +55,10 @@ export default function ConfigurationPage() {
   const [isEditing, setIsEditing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [showHelp, setShowHelp] = useState(false);
+  // Track File objects for items that have local (not-yet-uploaded) media
+  const [pendingFiles, setPendingFiles] = useState<Map<string, File>>(new Map());
+  // IDs of items whose media failed to upload on the last save
+  const [uploadErrors, setUploadErrors] = useState<string[]>([]);
 
   // Form state
   const [planType, setPlanType] = useState<PlanType>('week');
@@ -102,10 +106,55 @@ export default function ConfigurationPage() {
   const handleSavePlan = async () => {
     if (!plan) return;
     setIsSaving(true);
+    setUploadErrors([]);
 
-    const updatedPlans = savedPlans.some(p => p.id === plan.id)
-      ? savedPlans.map(p => p.id === plan.id ? plan : p)
-      : [...savedPlans, plan];
+    // Upload media for all approved items that still have a pending local file.
+    // Collect results first, then apply all state changes at once.
+    const successfulUploads = new Map<string, string>(); // itemId -> server URL
+    const failedItemIds: string[] = [];
+
+    for (const [itemId, file] of pendingFiles.entries()) {
+      const item = plan.items.find(i => i.id === itemId);
+      if (item && item.status === 'approved') {
+        try {
+          const formData = new FormData();
+          formData.append('file', file);
+          const uploadRes = await fetch('/api/media/upload', { method: 'POST', body: formData });
+          if (uploadRes.ok) {
+            const { url } = await uploadRes.json();
+            successfulUploads.set(itemId, url);
+          } else {
+            failedItemIds.push(itemId);
+          }
+        } catch {
+          failedItemIds.push(itemId);
+        }
+      }
+    }
+
+    // Apply server URLs and remove successfully uploaded items from pendingFiles
+    let latestPlan = plan;
+    if (successfulUploads.size > 0) {
+      latestPlan = {
+        ...latestPlan,
+        items: latestPlan.items.map(i =>
+          successfulUploads.has(i.id) ? { ...i, mediaUrl: successfulUploads.get(i.id) } : i
+        ),
+      };
+      setPendingFiles(prev => {
+        const next = new Map(prev);
+        for (const itemId of successfulUploads.keys()) next.delete(itemId);
+        return next;
+      });
+    }
+    if (failedItemIds.length > 0) {
+      setUploadErrors(failedItemIds);
+    }
+    setPlan(latestPlan);
+
+    const updatedPlans = savedPlans.some(p => p.id === latestPlan.id)
+      ? savedPlans.map(p => p.id === latestPlan.id ? latestPlan : p)
+      : [...savedPlans, latestPlan];
 
     setSavedPlans(updatedPlans);
     setIsEditing(false);
@@ -129,12 +178,13 @@ export default function ConfigurationPage() {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
+      setPendingFiles(prev => new Map(prev).set(itemId, file));
       setPlan(prev => {
         if (!prev) return prev;
         return {
           ...prev,
-          items: prev.items.map(item => 
-            item.id === itemId ? { ...item, mediaUrl: url } : item
+          items: prev.items.map(item =>
+            item.id === itemId ? { ...item, mediaUrl: url, status: 'waiting for approval' } : item
           )
         };
       });
@@ -148,6 +198,23 @@ export default function ConfigurationPage() {
         ...prev,
         items: prev.items.map(item => 
           item.id === itemId ? { ...item, status: newStatus } : item
+        )
+      };
+    });
+  };
+
+  const handleCancelItem = (itemId: string) => {
+    setPendingFiles(prev => {
+      const next = new Map(prev);
+      next.delete(itemId);
+      return next;
+    });
+    setPlan(prev => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        items: prev.items.map(item =>
+          item.id === itemId ? { ...item, mediaUrl: undefined, status: 'preparing' } : item
         )
       };
     });
@@ -408,7 +475,7 @@ export default function ConfigurationPage() {
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2 text-blue-700 font-bold text-base">
               <HelpCircle size={18} />
-              How does Submit for Approval work?
+              How does the media approval flow work?
             </div>
             <button
               onClick={() => setShowHelp(false)}
@@ -420,28 +487,36 @@ export default function ConfigurationPage() {
           <ol className="space-y-3 text-sm text-blue-800">
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">1</span>
-              <span><strong>Upload media</strong> to an item — the "Submit for Approval" button only becomes active once a photo or video has been attached.</span>
+              <span><strong>Choose media</strong> for an item — click the upload area to pick a photo or video. A local preview appears and <em>Approve</em> / <em>Cancel</em> buttons become available.</span>
             </li>
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">2</span>
-              <span><strong>Click "Submit for Approval"</strong> — the item moves to <em>Waiting for Approval</em> status. Approve / Cancel buttons appear. No data is sent to the server yet.</span>
+              <span><strong>Approve or Cancel</strong> — click <em>Approve</em> to mark the item ready for publishing, or <em>Cancel</em> to clear the selection and start over.</span>
             </li>
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">3</span>
-              <span><strong>Click "Save"</strong> in the plan header — all changes (including the new status) are sent to the server and written to <code className="bg-blue-100 px-1 rounded">plans.json</code>.</span>
+              <span><strong>Save the plan</strong> — click <em>Save</em> in the action bar. Approved items have their media uploaded to the server at that point; the preview then shows the server-hosted file.</span>
             </li>
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">4</span>
-              <span><strong>Approve the item</strong> (click Approve, then Save) — once an item reaches <em>Approved</em> status, the server automatically adds it to the Telegram bot queue (<code className="bg-blue-100 px-1 rounded">media_queue.json</code>).</span>
-            </li>
-            <li className="flex gap-3">
-              <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">5</span>
-              <span><strong>The bot notifies Inna</strong> — the Telegram bot picks up the queued item, asks Gemini to generate post copy, and sends the result to Inna for a final sign-off before posting.</span>
+              <span><strong>Bot queue</strong> — once saved, approved items are automatically added to the Telegram bot queue (<code className="bg-blue-100 px-1 rounded">media_queue.json</code>). The bot asks Gemini to draft post copy and sends it to Inna for final sign-off.</span>
             </li>
           </ol>
           <p className="text-xs text-blue-500 pt-1 border-t border-blue-100">
-            💡 Tip: "Submit for Approval" only changes local state — always remember to <strong>Save</strong> after submitting so your changes are persisted.
+            💡 Tip: Unsaved changes are only in your browser — always <strong>Save</strong> after approving so media is uploaded and changes are persisted to the server.
           </p>
+        </div>
+      )}
+
+      {uploadErrors.length > 0 && (
+        <div className="bg-red-50 border border-red-200 rounded-2xl px-5 py-4 flex items-start gap-3 text-sm text-red-700">
+          <XCircle size={18} className="shrink-0 mt-0.5 text-red-500" />
+          <div>
+            <strong>Some media files could not be uploaded.</strong> The plan was saved with local previews for those items. Re-open edit mode and save again to retry.
+          </div>
+          <button onClick={() => setUploadErrors([])} className="ml-auto shrink-0 text-red-400 hover:text-red-700 transition-colors">
+            <X size={16} />
+          </button>
         </div>
       )}
 
@@ -542,13 +617,12 @@ export default function ConfigurationPage() {
                 {/* Actions based on status */}
                 <div className="mt-auto pt-4 border-t border-slate-50 flex flex-wrap gap-2">
                   {item.status === 'preparing' && (
-                    <button 
-                      onClick={() => updateItemStatus(item.id, 'waiting for approval')}
-                      disabled={!item.mediaUrl}
-                      className="flex-1 bg-blue-50 text-blue-600 py-2 rounded-xl text-sm font-semibold hover:bg-blue-100 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                    >
-                      Submit for Approval
-                    </button>
+                    <p className="flex-1 text-center text-sm text-slate-400 py-2">
+                      {(() => {
+                        const label = item.mediaType === 'any' ? 'photo or video' : item.mediaType;
+                        return `Choose a ${label} above to approve this item.`;
+                      })()}
+                    </p>
                   )}
                   
                   {item.status === 'waiting for approval' && (
@@ -560,7 +634,7 @@ export default function ConfigurationPage() {
                         <CheckCircle2 size={16} /> Approve
                       </button>
                       <button 
-                        onClick={() => updateItemStatus(item.id, 'canceled')}
+                        onClick={() => handleCancelItem(item.id)}
                         className="flex-1 bg-red-50 text-red-600 py-2 rounded-xl text-sm font-semibold hover:bg-red-100 transition-all flex items-center justify-center gap-1"
                       >
                         <XCircle size={16} /> Cancel

@@ -1,12 +1,36 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
+import multer from 'multer';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
 
 function plansApiPlugin() {
   const PLANS_FILE = path.join(process.cwd(), 'plans.json');
   const BOT_QUEUE_FILE = path.join(process.cwd(), 'bot', 'media_queue.json');
+  const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+
+  if (!fs.existsSync(UPLOADS_DIR)) {
+    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+  }
+
+  const upload = multer({
+    storage: multer.diskStorage({
+      destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+      filename: (_req, file, cb) => {
+        const ext = path.extname(file.originalname).toLowerCase();
+        cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+      },
+    }),
+    limits: { fileSize: 200 * 1024 * 1024 },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only image and video files are allowed'));
+      }
+    },
+  });
 
   function buildPlanItemCaption(planName: string, item: any): string {
     const tags = item.tags && item.tags.length ? ` | Tags: ${(item.tags as string[]).join(', ')}` : '';
@@ -87,6 +111,55 @@ function plansApiPlugin() {
         } else {
           res.statusCode = 405;
           res.end(JSON.stringify({ error: 'Method not allowed' }));
+        }
+      });
+
+      server.middlewares.use('/api/media/upload', (req: any, res: any, next: any) => {
+        if (req.method !== 'POST') {
+          res.statusCode = 405;
+          res.setHeader('Content-Type', 'application/json');
+          res.end(JSON.stringify({ error: 'Method not allowed' }));
+          return;
+        }
+        upload.single('file')(req, res, (err: any) => {
+          res.setHeader('Content-Type', 'application/json');
+          if (err || !req.file) {
+            res.statusCode = 400;
+            res.end(JSON.stringify({ error: err?.message ?? 'No file received' }));
+            return;
+          }
+          res.end(JSON.stringify({ url: `/uploads/${req.file.filename}` }));
+        });
+      });
+
+      // Serve uploaded files with path-traversal protection
+      server.middlewares.use('/uploads', (req: any, res: any, next: any) => {
+        const relativePath = path.normalize(decodeURIComponent(req.url ?? '')).split('?')[0];
+        // Reject absolute paths and any traversal attempts
+        if (path.isAbsolute(relativePath) || relativePath.includes('..')) {
+          res.statusCode = 400;
+          res.end('Bad request');
+          return;
+        }
+        const filePath = path.join(UPLOADS_DIR, relativePath);
+        // Ensure the resolved path stays inside UPLOADS_DIR
+        if (!filePath.startsWith(UPLOADS_DIR + path.sep) && filePath !== UPLOADS_DIR) {
+          res.statusCode = 400;
+          res.end('Bad request');
+          return;
+        }
+        if (fs.existsSync(filePath) && fs.statSync(filePath).isFile()) {
+          const ext = path.extname(filePath).toLowerCase();
+          const mimeTypes: Record<string, string> = {
+            '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png',
+            '.gif': 'image/gif', '.webp': 'image/webp', '.avif': 'image/avif',
+            '.mp4': 'video/mp4', '.mov': 'video/quicktime', '.avi': 'video/x-msvideo',
+            '.mkv': 'video/x-matroska', '.webm': 'video/webm',
+          };
+          res.setHeader('Content-Type', mimeTypes[ext] ?? 'application/octet-stream');
+          fs.createReadStream(filePath).pipe(res);
+        } else {
+          next();
         }
       });
     },

@@ -14,29 +14,34 @@ import {
   MessageSquare,
   Smartphone,
   Image as ImageIcon,
-  Send
+  Send,
+  CalendarDays
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
+import ConfigurationPage from './components/ConfigurationPage';
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'configuration'>('dashboard');
 
   return (
-    <div className="min-h-screen bg-[#FDFCFB] text-slate-800 font-sans selection:bg-orange-100">
+    <div className="min-h-screen text-slate-800 font-sans selection:bg-blue-100">
       {/* Mobile Nav */}
       <div className="lg:hidden bg-white border-b border-slate-100 p-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-orange-500 rounded-lg flex items-center justify-center text-white">
+          <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white">
             <Sparkles size={16} />
           </div>
           <h1 className="font-bold text-slate-900">Inna AI</h1>
         </div>
         <div className="flex gap-4">
-          <button onClick={() => setActiveTab('dashboard')} className={cn("p-2", activeTab === 'dashboard' ? "text-orange-500" : "text-slate-400")}>
+          <button onClick={() => setActiveTab('dashboard')} className={cn("p-2", activeTab === 'dashboard' ? "text-blue-500" : "text-slate-400")}>
             <LayoutDashboard size={20} />
           </button>
-          <button onClick={() => setActiveTab('strategy')} className={cn("p-2", activeTab === 'strategy' ? "text-orange-500" : "text-slate-400")}>
+          <button onClick={() => setActiveTab('configuration')} className={cn("p-2", activeTab === 'configuration' ? "text-blue-500" : "text-slate-400")}>
+            <CalendarDays size={20} />
+          </button>
+          <button onClick={() => setActiveTab('strategy')} className={cn("p-2", activeTab === 'strategy' ? "text-blue-500" : "text-slate-400")}>
             <FileText size={20} />
           </button>
         </div>
@@ -46,7 +51,7 @@ export default function App() {
       <aside className="fixed left-0 top-0 h-full w-64 bg-white border-r border-slate-100 z-50 hidden lg:flex flex-col">
         <div className="p-6 border-b border-slate-50">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
+            <div className="w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center text-white shadow-lg shadow-blue-200">
               <Sparkles size={20} />
             </div>
             <div>
@@ -62,6 +67,12 @@ export default function App() {
             label="Command Center" 
             active={activeTab === 'dashboard'} 
             onClick={() => setActiveTab('dashboard')} 
+          />
+          <NavItem 
+            icon={<CalendarDays size={20} />} 
+            label="Configuration" 
+            active={activeTab === 'configuration'} 
+            onClick={() => setActiveTab('configuration')} 
           />
           <NavItem 
             icon={<FileText size={20} />} 
@@ -85,14 +96,16 @@ export default function App() {
 
       {/* Main Content */}
       <main className="lg:ml-64 p-4 lg:p-8">
-        <header className="flex justify-between items-center mb-8">
+        <header className="flex justify-between items-center mb-8 bg-white/80 backdrop-blur-md p-4 rounded-3xl border border-white/20 shadow-sm">
           <div>
             <h2 className="text-2xl font-bold text-slate-900">
               {activeTab === 'dashboard' && "Command Center"}
+              {activeTab === 'configuration' && "Plan Configuration"}
               {activeTab === 'strategy' && "Business Strategy 2025"}
             </h2>
             <p className="text-slate-500">
               {activeTab === 'dashboard' && "Your Telegram-first media pipeline"}
+              {activeTab === 'configuration' && "Manage your upcoming content plans"}
               {activeTab === 'strategy' && "Roadmap and goals for Shiatsu Inna"}
             </p>
           </div>
@@ -115,16 +128,16 @@ export default function App() {
               exit={{ opacity: 0, y: -10 }}
               className="max-w-4xl mx-auto space-y-8"
             >
-              <div className="bg-gradient-to-br from-orange-500 to-orange-600 rounded-3xl p-8 text-white shadow-xl shadow-orange-200 relative overflow-hidden">
+              <div className="bg-gradient-to-br from-blue-500 to-blue-600 rounded-3xl p-8 text-white shadow-xl shadow-blue-200 relative overflow-hidden">
                 <div className="absolute top-0 right-0 w-64 h-64 bg-white opacity-5 rounded-full blur-3xl -mr-20 -mt-20"></div>
                 <div className="relative z-10 flex flex-col md:flex-row items-center gap-8">
                   <div className="flex-1">
                     <h3 className="text-2xl font-bold mb-2">The bot is waiting for your media!</h3>
-                    <p className="text-orange-100 mb-6 leading-relaxed">
+                    <p className="text-blue-100 mb-6 leading-relaxed">
                       The workflow has moved entirely to Telegram. Upload your photos and videos for the upcoming week directly to the bot. It will automatically generate authentic posts and send them back to you for approval.
                     </p>
                     <div className="flex gap-4">
-                      <a href="#" className="bg-white text-orange-600 px-6 py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
+                      <a href="#" className="bg-white text-blue-600 px-6 py-3 rounded-xl font-bold shadow-sm hover:shadow-md transition-all flex items-center gap-2">
                         <Smartphone size={18} />
                         Open Telegram Bot
                       </a>
@@ -134,7 +147,7 @@ export default function App() {
                     <h4 className="font-bold text-sm mb-3 flex items-center gap-2">
                       <Clock size={16} /> How it works
                     </h4>
-                    <ul className="space-y-3 text-sm text-orange-50">
+                    <ul className="space-y-3 text-sm text-blue-50">
                       <li className="flex items-start gap-2">
                         <span className="bg-white/20 w-5 h-5 rounded-full flex items-center justify-center shrink-0 text-xs font-bold">1</span>
                         Upload photos/videos via Telegram
@@ -163,7 +176,7 @@ export default function App() {
                   </div>
                 </div>
                 <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm flex items-center gap-4">
-                  <div className="w-12 h-12 bg-orange-50 text-orange-500 rounded-2xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-blue-50 text-blue-500 rounded-2xl flex items-center justify-center">
                     <FileText size={24} />
                   </div>
                   <div>
@@ -184,6 +197,17 @@ export default function App() {
             </motion.div>
           )}
 
+          {activeTab === 'configuration' && (
+            <motion.div 
+              key="configuration"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <ConfigurationPage />
+            </motion.div>
+          )}
+
           {activeTab === 'strategy' && (
             <motion.div 
               key="strategy"
@@ -195,7 +219,7 @@ export default function App() {
               <div className="lg:col-span-2 space-y-8">
                 <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <LayoutDashboard className="text-orange-500" />
+                    <LayoutDashboard className="text-blue-500" />
                     Executive Summary
                   </h3>
                   <p className="text-slate-600 leading-relaxed mb-4">
@@ -204,8 +228,8 @@ export default function App() {
                     Inna maintains full control via an approval-based workflow.
                   </p>
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="p-4 bg-orange-50 rounded-2xl">
-                      <p className="text-xs font-bold text-orange-600 uppercase tracking-wider mb-1">Primary Goal</p>
+                    <div className="p-4 bg-blue-50 rounded-2xl">
+                      <p className="text-xs font-bold text-blue-600 uppercase tracking-wider mb-1">Primary Goal</p>
                       <p className="text-slate-900 font-semibold">+20% Monthly Growth</p>
                     </div>
                     <div className="p-4 bg-blue-50 rounded-2xl">
@@ -217,7 +241,7 @@ export default function App() {
 
                 <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Users className="text-orange-500" />
+                    <Users className="text-blue-500" />
                     Target Audience Segments
                   </h3>
                   <div className="space-y-4">
@@ -229,7 +253,7 @@ export default function App() {
 
                 <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <Clock className="text-orange-500" />
+                    <Clock className="text-blue-500" />
                     Roadmap 2025
                   </h3>
                   <div className="space-y-6 relative before:absolute before:left-4 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-100">
@@ -243,7 +267,7 @@ export default function App() {
               <div className="space-y-8">
                 <section className="bg-slate-900 text-white rounded-3xl p-8 shadow-xl">
                   <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
-                    <MessageSquare className="text-orange-400" />
+                    <MessageSquare className="text-blue-400" />
                     Inna's Voice
                   </h3>
                   <div className="space-y-4">
@@ -264,7 +288,7 @@ export default function App() {
 
                 <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm">
                   <h3 className="text-xl font-bold mb-4 flex items-center gap-2">
-                    <MapPin className="text-orange-500" />
+                    <MapPin className="text-blue-500" />
                     Geotargeting
                   </h3>
                   <div className="flex flex-wrap gap-2">
@@ -291,13 +315,13 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
       className={cn(
         "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
         active 
-          ? "bg-orange-50 text-orange-600 shadow-sm" 
+          ? "bg-blue-50 text-blue-600 shadow-sm" 
           : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
       )}
     >
       {icon}
       <span>{label}</span>
-      {active && <motion.div layoutId="activeNav" className="ml-auto w-1.5 h-1.5 rounded-full bg-orange-500" />}
+      {active && <motion.div layoutId="activeNav" className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />}
     </button>
   );
 }
@@ -305,7 +329,7 @@ function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, labe
 function AudienceItem({ title, desc }: { title: string, desc: string }) {
   return (
     <div className="flex gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors">
-      <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-orange-600 shrink-0">
+      <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 shrink-0">
         <Users size={20} />
       </div>
       <div>
@@ -321,12 +345,12 @@ function RoadmapStep({ month, title, desc, active = false }: { month: string, ti
     <div className="relative pl-10">
       <div className={cn(
         "absolute left-0 top-1 w-8 h-8 rounded-full flex items-center justify-center z-10 border-2",
-        active ? "bg-orange-500 border-orange-500 text-white" : "bg-white border-slate-100 text-slate-300"
+        active ? "bg-blue-500 border-blue-500 text-white" : "bg-white border-slate-100 text-slate-300"
       )}>
         {active ? <CheckCircle2 size={16} /> : <div className="w-2 h-2 rounded-full bg-slate-200" />}
       </div>
       <div>
-        <span className="text-[10px] font-bold text-orange-500 uppercase tracking-widest">{month}</span>
+        <span className="text-[10px] font-bold text-blue-500 uppercase tracking-widest">{month}</span>
         <h4 className="font-bold text-slate-900">{title}</h4>
         <p className="text-sm text-slate-500">{desc}</p>
       </div>

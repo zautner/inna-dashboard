@@ -9,6 +9,7 @@
  */
 import express from 'express';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
@@ -17,11 +18,37 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const PLANS_FILE = path.join(__dirname, 'plans.json');
 const BOT_QUEUE_FILE = path.join(__dirname, 'bot', 'media_queue.json');
+const UPLOADS_DIR = path.join(__dirname, 'uploads');
 const PORT = parseInt(process.env.API_PORT || process.env.PORT || '3000', 10);
 const SERVE_STATIC = process.env.API_ONLY !== 'true';
 
+if (!fs.existsSync(UPLOADS_DIR)) {
+  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+
 const app = express();
 app.use(express.json());
+
+// Serve uploaded media files
+app.use('/uploads', express.static(UPLOADS_DIR));
+
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
+    filename: (_req, file, cb) => {
+      const ext = path.extname(file.originalname).toLowerCase();
+      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
+    },
+  }),
+  limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB max
+  fileFilter: (_req, file, cb) => {
+    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Only image and video files are allowed'));
+    }
+  },
+});
 
 // Apply rate limiting to all API routes
 const apiLimiter = rateLimit({
@@ -40,6 +67,12 @@ if (SERVE_STATIC) {
     app.use(express.static(distDir));
   }
 }
+
+// POST /api/media/upload — upload a media file and return its public URL
+app.post('/api/media/upload', upload.single('file'), (req, res) => {
+  if (!req.file) return res.status(400).json({ error: 'No file received' });
+  res.json({ url: `/uploads/${req.file.filename}` });
+});
 
 // GET /api/queue-stats — return per-status counts from the bot queue
 app.get('/api/queue-stats', (_req, res) => {

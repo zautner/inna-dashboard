@@ -27,7 +27,8 @@ COPY package.json package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/dist ./dist
-COPY server.js plansStorage.js ./
+# Keep server-side modules/docs in the runtime image for ESM imports and /api/help-docs.
+COPY server.js plansStorage.js helpDocs.js README.md ./
 COPY bot ./bot
 
 ENV NODE_ENV=production

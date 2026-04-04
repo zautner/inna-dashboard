@@ -111,6 +111,47 @@ Common variables:
 - `BATCH_SIZE`
 - `INNA_CONTEXT_FILE` (optional, defaults to `inna-context.json` in repo root)
 
+#### Optional: social publishing webhooks
+
+If you want the bot to hand off approved posts to another system for publishing, add these optional variables to the repo-root `.env` file:
+
+```dotenv
+INSTAGRAM_FEED_WEBHOOK_URL=
+INSTAGRAM_STORY_WEBHOOK_URL=
+INSTAGRAM_REEL_WEBHOOK_URL=
+FACEBOOK_POST_WEBHOOK_URL=
+TIKTOK_VIDEO_WEBHOOK_URL=
+```
+
+How to get them:
+
+- These values do **not** come from Telegram, Gemini, or this repository.
+- Each value should be the incoming webhook URL of the system that will actually publish the content for that channel.
+- In practice, this is usually one of:
+  - a workflow tool such as n8n, Make, or Zapier
+  - your own backend endpoint
+  - a publishing service or automation maintained by a developer on your team
+
+Channel mapping:
+
+- `INSTAGRAM_FEED_WEBHOOK_URL` → Instagram feed posts
+- `INSTAGRAM_STORY_WEBHOOK_URL` → Instagram stories
+- `INSTAGRAM_REEL_WEBHOOK_URL` → Instagram reels
+- `FACEBOOK_POST_WEBHOOK_URL` → Facebook posts
+- `TIKTOK_VIDEO_WEBHOOK_URL` → TikTok videos
+
+What to ask the person or service providing the webhook:
+
+- a public HTTPS URL that accepts `POST` requests
+- confirmation that it accepts JSON
+- confirmation that it can receive these fields from the bot: `caption`, `generated_text`, `media_url`, `file_type`, `publish_at`, `target`, and item IDs
+
+Important notes:
+
+- If a variable is left blank, publishing for that channel is disabled.
+- When these variables are missing, Docker Compose prints a warning and defaults them to an empty string.
+- If your media file is stored under `/uploads/...`, set `APP_URL` as well so the bot can send an absolute `media_url` to the webhook.
+
 ### 3. Start the dashboard in development mode
 
 ```bash

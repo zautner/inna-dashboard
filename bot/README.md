@@ -86,6 +86,7 @@ TELEGRAM_BOT_TOKEN=your_telegram_bot_token
 GEMINI_API_KEY=your_gemini_api_key
 
 # Optional — processing and notifications
+GEMINI_MODEL=gemini-1.5-flash
 BATCH_SIZE=3
 INNA_CHAT_ID=
 
@@ -109,8 +110,9 @@ TIKTOK_VIDEO_WEBHOOK_URL=
 Notes:
 
 - `INNA_CHAT_ID` is optional, but useful for startup notifications about pending plan items.
+- `GEMINI_MODEL` is optional; use it if a model name changes or a preview model expires.
 - If storage paths are not set, the bot uses paths relative to the repo layout.
- - `APP_URL` is used to build absolute media URLs for publishing webhooks and lets the bot download dashboard-uploaded `/uploads/...` media over HTTP when it is not sharing the same filesystem.
+- `APP_URL` is used to build absolute media URLs for publishing webhooks and lets the bot download dashboard-uploaded `/uploads/...` media over HTTP when it is not sharing the same filesystem.
 
 ## Run locally
 

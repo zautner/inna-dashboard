@@ -1,6 +1,6 @@
 from google import genai
 from google.genai import types
-from config import GEMINI_API_KEY, get_inna_context
+from config import GEMINI_API_KEY, GEMINI_MODEL, get_inna_context
 
 # Initialize the Gemini client
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -43,7 +43,7 @@ def generate_post(media_bytes: bytes, mime_type: str, original_caption: str = No
     try:
         # Call the Gemini model with multimodal input (image/video + text)
         response = client.models.generate_content(
-            model='gemini-3.1-flash-preview',
+            model=GEMINI_MODEL,
             contents=[
                 types.Part.from_bytes(data=media_bytes, mime_type=mime_type),
                 prompt
@@ -52,5 +52,5 @@ def generate_post(media_bytes: bytes, mime_type: str, original_caption: str = No
         return response.text
         
     except Exception as e:
-        print(f"Error generating content with Gemini: {e}")
+        print(f"Error generating content with Gemini (model={GEMINI_MODEL}): {e}")
         return "❌ שגיאה ביצירת התוכן. אנא נסי שוב מאוחר יותר."

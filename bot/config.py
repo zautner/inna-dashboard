@@ -13,6 +13,10 @@ TELEGRAM_BOT_TOKEN = os.getenv("TELEGRAM_BOT_TOKEN", "")
 # Gemini API Key for generating content
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY", "")
 
+# Gemini model used for content generation. Keep configurable because preview model
+# names can expire and cause 404s at runtime.
+GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-1.5-flash")
+
 # Configuration for how many posts to send to Inna for review at once
 BATCH_SIZE = int(os.getenv("BATCH_SIZE", "3"))
 

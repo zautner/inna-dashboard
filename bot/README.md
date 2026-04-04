@@ -110,7 +110,7 @@ Notes:
 
 - `INNA_CHAT_ID` is optional, but useful for startup notifications about pending plan items.
 - If storage paths are not set, the bot uses paths relative to the repo layout.
-- `APP_URL` is used to build absolute media URLs for publishing webhooks.
+ - `APP_URL` is used to build absolute media URLs for publishing webhooks and lets the bot download dashboard-uploaded `/uploads/...` media over HTTP when it is not sharing the same filesystem.
 
 ## Run locally
 

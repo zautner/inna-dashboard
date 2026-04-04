@@ -26,6 +26,7 @@ services:
     environment:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-1.5-flash}
       - BATCH_SIZE=${BATCH_SIZE:-3}
       - INNA_CHAT_ID=${INNA_CHAT_ID}
       - PLANS_FILE=/data/plans.json

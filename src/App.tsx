@@ -19,11 +19,13 @@ import {
   Save,
   RefreshCw,
   AlertTriangle,
+  CircleHelp,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import ConfigurationPage from './components/ConfigurationPage';
 import BotStatusPage from './components/BotStatusPage';
+import HelpPage from './components/HelpPage';
 
 const APP_VERSION = '1.1.0';
 
@@ -103,7 +105,7 @@ const getLocationChips = (location: string): string[] => {
 };
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'configuration' | 'bot'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'configuration' | 'bot' | 'help'>('dashboard');
   const [queueStats, setQueueStats] = useState({ inQueue: 0, draftsPending: 0, approved: 0 });
   const [innaContext, setInnaContext] = useState<InnaContext>(DEFAULT_INNA_CONTEXT);
   const [contextDraft, setContextDraft] = useState<InnaContext>(DEFAULT_INNA_CONTEXT);
@@ -213,6 +215,9 @@ export default function App() {
           <button onClick={() => setActiveTab('strategy')} className={cn("p-2", activeTab === 'strategy' ? "text-blue-500" : "text-slate-400")}>
             <FileText size={20} />
           </button>
+          <button onClick={() => setActiveTab('help')} className={cn("p-2", activeTab === 'help' ? "text-blue-500" : "text-slate-400")}>
+            <CircleHelp size={20} />
+          </button>
         </div>
       </div>
 
@@ -255,6 +260,12 @@ export default function App() {
             active={activeTab === 'strategy'}
             onClick={() => setActiveTab('strategy')}
           />
+          <NavItem
+            icon={<CircleHelp size={20} />}
+            label="Help"
+            active={activeTab === 'help'}
+            onClick={() => setActiveTab('help')}
+          />
         </nav>
 
         <div className="p-4 mt-auto">
@@ -278,12 +289,14 @@ export default function App() {
               {activeTab === 'configuration' && "Plan Configuration"}
               {activeTab === 'bot' && "Bot Monitor"}
               {activeTab === 'strategy' && "Business Strategy 2025"}
+              {activeTab === 'help' && "Help & Documentation"}
             </h2>
             <p className="text-slate-500">
               {activeTab === 'dashboard' && "Your Telegram-first media pipeline"}
               {activeTab === 'configuration' && "Manage your upcoming content plans"}
               {activeTab === 'bot' && "Recent bot commands, operational outcomes, and severe errors"}
               {activeTab === 'strategy' && "Roadmap and goals for Shiatsu Inna"}
+              {activeTab === 'help' && "Read the dashboard and bot guides directly inside the app"}
             </p>
           </div>
           <div className="flex items-center gap-4">
@@ -553,6 +566,17 @@ export default function App() {
                   </div>
                 </section>
               </div>
+            </motion.div>
+          )}
+
+          {activeTab === 'help' && (
+            <motion.div
+              key="help"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <HelpPage />
             </motion.div>
           )}
         </AnimatePresence>

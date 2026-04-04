@@ -12,6 +12,7 @@ import rateLimit from 'express-rate-limit';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readHelpDocs } from './helpDocs.js';
 import {
   createMediaUploadMiddleware,
   persistPlans,
@@ -149,6 +150,16 @@ app.put('/api/inna-context', (req, res) => {
     }
     const saved = writeInnaContext(INNA_CONTEXT_FILE, payload);
     res.json(saved);
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+app.get('/api/help-docs', (_req, res) => {
+  try {
+    res.json({
+      documents: readHelpDocs(__dirname),
+    });
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }

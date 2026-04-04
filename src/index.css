@@ -11,6 +11,92 @@
   }
 }
 
+@layer components {
+  .help-markdown {
+    @apply text-slate-700 leading-7 wrap-break-word;
+  }
+
+  .help-markdown > :first-child {
+    @apply mt-0;
+  }
+
+  .help-markdown h1 {
+    @apply mt-8 mb-4 text-3xl font-bold text-slate-900;
+  }
+
+  .help-markdown h2 {
+    @apply mt-8 mb-3 text-2xl font-bold text-slate-900;
+  }
+
+  .help-markdown h3 {
+    @apply mt-6 mb-3 text-xl font-semibold text-slate-900;
+  }
+
+  .help-markdown h4,
+  .help-markdown h5,
+  .help-markdown h6 {
+    @apply mt-5 mb-2 text-lg font-semibold text-slate-900;
+  }
+
+  .help-markdown p,
+  .help-markdown ul,
+  .help-markdown ol,
+  .help-markdown blockquote,
+  .help-markdown pre,
+  .help-markdown table {
+    @apply my-4;
+  }
+
+  .help-markdown ul {
+    @apply list-disc pl-6;
+  }
+
+  .help-markdown ol {
+    @apply list-decimal pl-6;
+  }
+
+  .help-markdown li {
+    @apply my-1;
+  }
+
+  .help-markdown a {
+    @apply text-blue-600 underline underline-offset-4 hover:text-blue-700;
+  }
+
+  .help-markdown hr {
+    @apply my-6 border-slate-200;
+  }
+
+  .help-markdown code {
+    @apply rounded bg-slate-100 px-1.5 py-0.5 text-sm text-slate-800;
+  }
+
+  .help-markdown pre {
+    @apply overflow-x-auto rounded-2xl bg-slate-950 p-4 text-sm text-slate-100;
+  }
+
+  .help-markdown pre code {
+    @apply bg-transparent p-0 text-inherit;
+  }
+
+  .help-markdown blockquote {
+    @apply border-l-4 border-blue-200 pl-4 italic text-slate-600;
+  }
+
+  .help-markdown table {
+    @apply w-full border-collapse overflow-hidden rounded-2xl;
+  }
+
+  .help-markdown th,
+  .help-markdown td {
+    @apply border border-slate-200 px-3 py-2 text-left align-top;
+  }
+
+  .help-markdown th {
+    @apply bg-slate-50 font-semibold text-slate-900;
+  }
+}
+
 body {
   @apply bg-[#34abeb];
 }

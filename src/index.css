@@ -14,3 +14,51 @@
 body {
   @apply bg-[#34abeb];
 }
+
+.palette-darken-20 {
+  background-color: color-mix(in srgb, #34abeb 80%, black 20%);
+}
+
+.palette-darken-20 .bg-white {
+  background-color: color-mix(in srgb, white 80%, black 20%) !important;
+}
+
+.palette-darken-20 .bg-white\/80 {
+  background-color: rgb(204 204 204 / 0.8) !important;
+}
+
+.palette-darken-20 .bg-white\/50 {
+  background-color: rgb(204 204 204 / 0.5) !important;
+}
+
+.palette-darken-20 .bg-white\/10 {
+  background-color: rgb(204 204 204 / 0.1) !important;
+}
+
+.palette-darken-20 .bg-slate-50,
+.palette-darken-20 .bg-slate-50\/50,
+.palette-darken-20 .bg-slate-50\/60,
+.palette-darken-20 .bg-slate-50\/70 {
+  background-color: color-mix(in srgb, rgb(248 250 252) 80%, black 20%) !important;
+}
+
+.palette-darken-20 .bg-blue-50 {
+  background-color: color-mix(in srgb, rgb(239 246 255) 80%, black 20%) !important;
+}
+
+.palette-darken-20 .bg-green-50 {
+  background-color: color-mix(in srgb, rgb(240 253 244) 80%, black 20%) !important;
+}
+
+.palette-darken-20 .bg-red-50 {
+  background-color: color-mix(in srgb, rgb(254 242 242) 80%, black 20%) !important;
+}
+
+.palette-darken-20 .bg-amber-50 {
+  background-color: color-mix(in srgb, rgb(255 251 235) 80%, black 20%) !important;
+}
+
+.palette-darken-20 .bg-slate-900 {
+  background-color: color-mix(in srgb, rgb(15 23 42) 80%, black 20%) !important;
+}
+

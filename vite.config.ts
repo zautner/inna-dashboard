@@ -1,72 +1,39 @@
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import fs from 'fs';
-import multer from 'multer';
 import path from 'path';
 import {defineConfig, loadEnv} from 'vite';
+import {
+  createMediaUploadMiddleware,
+  ensureStorage,
+  persistPlans,
+  readBotMonitor,
+  readInnaContext,
+  readPublishingOverview,
+  readPlans,
+  readQueueStats,
+  resolveStoragePaths,
+  writeInnaContext,
+} from './plansStorage.js';
 
 function plansApiPlugin() {
-  const PLANS_FILE = path.join(process.cwd(), 'plans.json');
-  const BOT_QUEUE_FILE = path.join(process.cwd(), 'bot', 'media_queue.json');
-  const UPLOADS_DIR = path.join(process.cwd(), 'uploads');
+  const {
+    plansFile: PLANS_FILE,
+    botQueueFile: BOT_QUEUE_FILE,
+    botActivityFile: BOT_ACTIVITY_FILE,
+    uploadsDir: UPLOADS_DIR,
+    innaContextFile: INNA_CONTEXT_FILE,
+  } = resolveStoragePaths(process.cwd());
 
-  if (!fs.existsSync(UPLOADS_DIR)) {
-    fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-  }
-
-  const upload = multer({
-    storage: multer.diskStorage({
-      destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-      filename: (_req, file, cb) => {
-        const ext = path.extname(file.originalname).toLowerCase();
-        cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-      },
-    }),
-    limits: { fileSize: 200 * 1024 * 1024 },
-    fileFilter: (_req, file, cb) => {
-      if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-        cb(null, true);
-      } else {
-        cb(new Error('Only image and video files are allowed'));
-      }
-    },
+  ensureStorage({
+    plansFile: PLANS_FILE,
+    botQueueFile: BOT_QUEUE_FILE,
+    botActivityFile: BOT_ACTIVITY_FILE,
+    uploadsDir: UPLOADS_DIR,
+    innaContextFile: INNA_CONTEXT_FILE,
   });
 
-  function buildPlanItemCaption(planName: string, item: any): string {
-    const tags = item.tags && item.tags.length ? ` | Tags: ${(item.tags as string[]).join(', ')}` : '';
-    return `Plan: ${planName} | ${item.day} | ${(item.contentTypes as string[]).join(', ')}${tags}`;
-  }
-
-  function queueApprovedItemsForBot(plans: any[]) {
-    let botQueue: any[] = [];
-    if (fs.existsSync(BOT_QUEUE_FILE)) {
-      try { botQueue = JSON.parse(fs.readFileSync(BOT_QUEUE_FILE, 'utf-8')); } catch { /* ignore */ }
-    }
-    const existingPlanItemIds = new Set(botQueue.filter(i => i.plan_item_id).map(i => i.plan_item_id));
-    let changed = false;
-    for (const plan of plans) {
-      for (const item of plan.items) {
-        if (item.status === 'approved' && !existingPlanItemIds.has(item.id)) {
-          const shortId = String(item.id).slice(-8);
-          botQueue.push({
-            id: `pi-${shortId}`,
-            plan_item_id: item.id,
-            plan_id: plan.id,
-            plan_name: plan.name,
-            file_id: null,
-            file_type: item.mediaType === 'any' ? 'photo' : item.mediaType,
-            caption: buildPlanItemCaption(plan.name, item),
-            status: 'new',
-            generated_text: '',
-          });
-          changed = true;
-        }
-      }
-    }
-    if (changed) {
-      fs.writeFileSync(BOT_QUEUE_FILE, JSON.stringify(botQueue, null, 2), 'utf-8');
-    }
-  }
+  const upload = createMediaUploadMiddleware(UPLOADS_DIR);
 
   return {
     name: 'plans-api',
@@ -74,15 +41,34 @@ function plansApiPlugin() {
       server.middlewares.use('/api/queue-stats', (_req: any, res: any) => {
         res.setHeader('Content-Type', 'application/json');
         try {
-          const queue: any[] = fs.existsSync(BOT_QUEUE_FILE)
-            ? JSON.parse(fs.readFileSync(BOT_QUEUE_FILE, 'utf-8'))
-            : [];
-          const inQueue = queue.filter(i => ['new', 'waiting_media'].includes(i.status)).length;
-          const draftsPending = queue.filter(i => ['draft', 'rethinking'].includes(i.status)).length;
-          const approved = queue.filter(i => i.status === 'approved').length;
-          res.end(JSON.stringify({ inQueue, draftsPending, approved }));
+          res.end(JSON.stringify(readQueueStats(BOT_QUEUE_FILE)));
         } catch {
           res.end(JSON.stringify({ inQueue: 0, draftsPending: 0, approved: 0 }));
+        }
+      });
+
+      server.middlewares.use('/api/bot-monitor', (_req: any, res: any) => {
+        res.setHeader('Content-Type', 'application/json');
+        try {
+          res.end(JSON.stringify({
+            ...readBotMonitor(BOT_ACTIVITY_FILE),
+            publishing: readPublishingOverview(BOT_QUEUE_FILE),
+          }));
+        } catch {
+          res.end(JSON.stringify({
+            commands: [],
+            severeErrors: [],
+            lastUpdatedAt: null,
+            publishing: {
+              waitingForApproval: 0,
+              waitingForSchedule: 0,
+              scheduledTargets: 0,
+              publishedTargets: 0,
+              failedTargets: 0,
+              nextPublishAt: null,
+              upcoming: [],
+            },
+          }));
         }
       });
 
@@ -90,18 +76,14 @@ function plansApiPlugin() {
         res.setHeader('Content-Type', 'application/json');
         res.setHeader('Access-Control-Allow-Origin', '*');
         if (req.method === 'GET') {
-          const data = fs.existsSync(PLANS_FILE)
-            ? JSON.parse(fs.readFileSync(PLANS_FILE, 'utf-8'))
-            : [];
-          res.end(JSON.stringify(data));
+          res.end(JSON.stringify(readPlans(PLANS_FILE)));
         } else if (req.method === 'POST') {
           let body = '';
           req.on('data', (chunk: Buffer) => { body += chunk; });
           req.on('end', () => {
             try {
               const plans = JSON.parse(body);
-              fs.writeFileSync(PLANS_FILE, JSON.stringify(plans, null, 2), 'utf-8');
-              queueApprovedItemsForBot(plans);
+              persistPlans(plans, { plansFile: PLANS_FILE, botQueueFile: BOT_QUEUE_FILE, uploadsDir: UPLOADS_DIR });
               res.end(JSON.stringify({ success: true }));
             } catch {
               res.statusCode = 400;
@@ -114,7 +96,36 @@ function plansApiPlugin() {
         }
       });
 
-      server.middlewares.use('/api/media/upload', (req: any, res: any, next: any) => {
+      server.middlewares.use('/api/inna-context', (req: any, res: any) => {
+        res.setHeader('Content-Type', 'application/json');
+        if (req.method === 'GET') {
+          res.end(JSON.stringify(readInnaContext(INNA_CONTEXT_FILE)));
+          return;
+        }
+        if (req.method === 'PUT') {
+          let body = '';
+          req.on('data', (chunk: Buffer) => { body += chunk; });
+          req.on('end', () => {
+            try {
+              const payload = JSON.parse(body || '{}');
+              if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+                res.statusCode = 400;
+                res.end(JSON.stringify({ error: 'Body must be an object' }));
+                return;
+              }
+              res.end(JSON.stringify(writeInnaContext(INNA_CONTEXT_FILE, payload)));
+            } catch {
+              res.statusCode = 400;
+              res.end(JSON.stringify({ error: 'Invalid JSON' }));
+            }
+          });
+          return;
+        }
+        res.statusCode = 405;
+        res.end(JSON.stringify({ error: 'Method not allowed' }));
+      });
+
+      server.middlewares.use('/api/media/upload', (req: any, res: any, _next: any) => {
         if (req.method !== 'POST') {
           res.statusCode = 405;
           res.setHeader('Content-Type', 'application/json');

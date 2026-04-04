@@ -5,8 +5,18 @@ services:
       dockerfile: Dockerfile
       args:
         GEMINI_API_KEY: ${GEMINI_API_KEY}
+        TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME}
+    environment:
+      - PORT=3000
+      - PLANS_FILE=/data/plans.json
+      - BOT_QUEUE_FILE=/data/media_queue.json
+      - BOT_ACTIVITY_FILE=/data/bot_activity.json
+      - UPLOADS_DIR=/data/uploads
+      - INNA_CONTEXT_FILE=/data/inna-context.json
     ports:
-      - "8082:80"
+      - "8082:3000"
+    volumes:
+      - app-data:/data
     restart: unless-stopped
 
   bot:
@@ -17,4 +27,23 @@ services:
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
       - GEMINI_API_KEY=${GEMINI_API_KEY}
       - BATCH_SIZE=${BATCH_SIZE:-3}
+      - INNA_CHAT_ID=${INNA_CHAT_ID}
+      - PLANS_FILE=/data/plans.json
+      - BOT_QUEUE_FILE=/data/media_queue.json
+      - BOT_ACTIVITY_FILE=/data/bot_activity.json
+      - UPLOADS_DIR=/data/uploads
+      - INNA_CONTEXT_FILE=/data/inna-context.json
+      - APP_URL=${APP_URL}
+      - PUBLISH_POLL_INTERVAL_SECONDS=${PUBLISH_POLL_INTERVAL_SECONDS:-30}
+      - INSTAGRAM_FEED_WEBHOOK_URL=${INSTAGRAM_FEED_WEBHOOK_URL}
+      - INSTAGRAM_STORY_WEBHOOK_URL=${INSTAGRAM_STORY_WEBHOOK_URL}
+      - INSTAGRAM_REEL_WEBHOOK_URL=${INSTAGRAM_REEL_WEBHOOK_URL}
+      - FACEBOOK_POST_WEBHOOK_URL=${FACEBOOK_POST_WEBHOOK_URL}
+      - TIKTOK_VIDEO_WEBHOOK_URL=${TIKTOK_VIDEO_WEBHOOK_URL}
+    volumes:
+      - app-data:/data
     restart: unless-stopped
+
+volumes:
+  app-data:
+

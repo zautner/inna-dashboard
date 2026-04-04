@@ -1,7 +1,7 @@
 {
   "name": "react-example",
   "private": true,
-  "version": "1.0.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite --port=3000 --host=0.0.0.0",
@@ -9,7 +9,10 @@
     "build": "vite build",
     "preview": "vite preview",
     "clean": "rm -rf dist",
-    "lint": "tsc --noEmit"
+    "lint": "tsc --noEmit",
+    "verify:lifecycle": "node scripts/verify-lifecycle.mjs",
+    "verify:publishing": "python3 scripts/verify-scheduled-publishing.py",
+    "verify:context": "node scripts/verify-inna-context-api.mjs"
   },
   "dependencies": {
     "@google/genai": "^1.29.0",

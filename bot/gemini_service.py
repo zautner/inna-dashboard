@@ -1,6 +1,6 @@
 from google import genai
 from google.genai import types
-from config import GEMINI_API_KEY, INNA_CONTEXT
+from config import GEMINI_API_KEY, get_inna_context
 
 # Initialize the Gemini client
 client = genai.Client(api_key=GEMINI_API_KEY)
@@ -11,21 +11,21 @@ def generate_post(media_bytes: bytes, mime_type: str, original_caption: str = No
     Supports "rethinking" by taking previous drafts and user feedback into account.
     """
     
+    inna_context = get_inna_context()
+    quote_lines = "\n".join(f'    - "{quote}"' for quote in inna_context["quotes"])
+
     prompt = f"""
     You are an AI Social Media Agent for Inna, a Shiatsu practitioner in Tel Aviv.
     
     CONTEXT:
-    - Name: {INNA_CONTEXT['name']}
-    - Specialty: {INNA_CONTEXT['specialty']}
-    - Target Audience: {INNA_CONTEXT['targetAudience']}
-    - Voice: {INNA_CONTEXT['voice']['tone']}. {INNA_CONTEXT['voice']['style']}
-    - Forbidden Words: {', '.join(INNA_CONTEXT['voice']['forbiddenWords'])}
+    - Name: {inna_context['name']}
+    - Specialty: {inna_context['specialty']}
+    - Target Audience: {inna_context['targetAudience']}
+    - Voice: {inna_context['voice']['tone']}. {inna_context['voice']['style']}
+    - Forbidden Words: {', '.join(inna_context['voice']['forbiddenWords'])}
     
     INNA'S DIRECT QUOTES FOR VOICE REFERENCE:
-    - "{INNA_CONTEXT['quotes'][0]}"
-    - "{INNA_CONTEXT['quotes'][1]}"
-    - "{INNA_CONTEXT['quotes'][2]}"
-    - "{INNA_CONTEXT['quotes'][3]}"
+{quote_lines}
     """
     
     if previous_draft and feedback:

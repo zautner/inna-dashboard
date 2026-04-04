@@ -14,18 +14,103 @@ import {
   MessageSquare,
   Smartphone,
   Image as ImageIcon,
-  Send,
-  CalendarDays
+  CalendarDays,
+  TerminalSquare,
+  Save,
+  RefreshCw,
+  AlertTriangle,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { cn } from './lib/utils';
 import ConfigurationPage from './components/ConfigurationPage';
+import BotStatusPage from './components/BotStatusPage';
 
-const APP_VERSION = '1.0.0';
+const APP_VERSION = '1.1.0';
+
+interface InnaContext {
+  name: string;
+  specialty: string;
+  location: string;
+  philosophy: string;
+  voice: {
+    tone: string;
+    forbiddenWords: string[];
+    style: string;
+  };
+  targetAudience: string;
+  quotes: string[];
+}
+
+interface SaveNotice {
+  message: string;
+  savedAt: string;
+}
+
+const DEFAULT_INNA_CONTEXT: InnaContext = {
+  name: 'Inna',
+  specialty: 'Shiatsu & Chinese Medicine',
+  location: 'Tel Aviv, Gush Dan (Givatayim, Ramat Gan, Holon, Bat Yam)',
+  philosophy: "Shiatsu is about touch and Qi flow. It's not just physical tissue; it's about helping the body heal itself by smoothing the flow of energy.",
+  voice: {
+    tone: 'Warm, human, expert but accessible, no corporate jargon, first-person.',
+    forbiddenWords: ['my dear', 'sweetie', 'listen to me', 'I know best', 'final decision'],
+    style: 'Short, to the point, leaving room for discussion.',
+  },
+  targetAudience: 'Women 40+, often with orthopedic issues (back, neck, shoulder pain), general fatigue, or lack of sleep.',
+  quotes: [
+    'Shiatsu is about Qi flow. If there is smooth flow, the person feels good. If there is stagnation, we feel pain.',
+    'The treatment is who you are. The difference between masters is the quality of touch.',
+    "I don't believe in just massage. Only the brain can release the muscle. In Shiatsu, we create a connection with the brain.",
+    "It's a dialogue between practitioner and patient.",
+  ],
+};
+
+const parseListFromTextarea = (value: string) =>
+  value
+    .split('\n')
+    .map(part => part.trim())
+    .filter(Boolean);
+
+const normalizeContext = (raw: unknown): InnaContext => {
+  const source = (raw && typeof raw === 'object' ? raw : {}) as Partial<InnaContext> & { voice?: Partial<InnaContext['voice']> };
+  const sourceVoice: Partial<InnaContext['voice']> = source.voice && typeof source.voice === 'object' ? source.voice : {};
+  return {
+    name: typeof source.name === 'string' && source.name.trim() ? source.name.trim() : DEFAULT_INNA_CONTEXT.name,
+    specialty: typeof source.specialty === 'string' && source.specialty.trim() ? source.specialty.trim() : DEFAULT_INNA_CONTEXT.specialty,
+    location: typeof source.location === 'string' && source.location.trim() ? source.location.trim() : DEFAULT_INNA_CONTEXT.location,
+    philosophy: typeof source.philosophy === 'string' && source.philosophy.trim() ? source.philosophy.trim() : DEFAULT_INNA_CONTEXT.philosophy,
+    voice: {
+      tone: typeof sourceVoice.tone === 'string' && sourceVoice.tone.trim() ? sourceVoice.tone.trim() : DEFAULT_INNA_CONTEXT.voice.tone,
+      forbiddenWords: Array.isArray(sourceVoice.forbiddenWords)
+        ? sourceVoice.forbiddenWords.filter((word): word is string => typeof word === 'string' && word.trim().length > 0).map(word => word.trim())
+        : [...DEFAULT_INNA_CONTEXT.voice.forbiddenWords],
+      style: typeof sourceVoice.style === 'string' && sourceVoice.style.trim() ? sourceVoice.style.trim() : DEFAULT_INNA_CONTEXT.voice.style,
+    },
+    targetAudience: typeof source.targetAudience === 'string' && source.targetAudience.trim() ? source.targetAudience.trim() : DEFAULT_INNA_CONTEXT.targetAudience,
+    quotes: Array.isArray(source.quotes)
+      ? source.quotes.filter((quote): quote is string => typeof quote === 'string' && quote.trim().length > 0).map(quote => quote.trim())
+      : [...DEFAULT_INNA_CONTEXT.quotes],
+  };
+};
+
+const getLocationChips = (location: string): string[] => {
+  const chips = location
+    .replace(/[()]/g, ',')
+    .split(',')
+    .map(part => part.trim())
+    .filter(Boolean);
+  return chips.length ? chips : [location];
+};
 
 export default function App() {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'configuration'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'strategy' | 'configuration' | 'bot'>('dashboard');
   const [queueStats, setQueueStats] = useState({ inQueue: 0, draftsPending: 0, approved: 0 });
+  const [innaContext, setInnaContext] = useState<InnaContext>(DEFAULT_INNA_CONTEXT);
+  const [contextDraft, setContextDraft] = useState<InnaContext>(DEFAULT_INNA_CONTEXT);
+  const [isContextLoading, setIsContextLoading] = useState(false);
+  const [isContextSaving, setIsContextSaving] = useState(false);
+  const [contextError, setContextError] = useState<string | null>(null);
+  const [contextSaveNotice, setContextSaveNotice] = useState<SaveNotice | null>(null);
 
   useEffect(() => {
     fetch('/api/queue-stats')
@@ -34,12 +119,79 @@ export default function App() {
       .catch(err => console.error('Failed to load queue stats:', err));
   }, []);
 
+  const loadInnaContext = async () => {
+    setIsContextLoading(true);
+    try {
+      const res = await fetch('/api/inna-context');
+      if (!res.ok) {
+        setContextError('Could not load business context.');
+        setContextSaveNotice(null);
+        return;
+      }
+      const payload = normalizeContext(await res.json());
+      setInnaContext(payload);
+      setContextDraft(payload);
+      setContextError(null);
+      setContextSaveNotice(null);
+    } catch {
+      setContextError('Could not load business context.');
+      setContextSaveNotice(null);
+    } finally {
+      setIsContextLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadInnaContext();
+  }, []);
+
+  const hasContextChanges = JSON.stringify(contextDraft) !== JSON.stringify(innaContext);
+
+  const handleSaveContext = async () => {
+    setIsContextSaving(true);
+    try {
+      const res = await fetch('/api/inna-context', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(contextDraft),
+      });
+      if (!res.ok) {
+        setContextError('Could not save business context.');
+        setContextSaveNotice(null);
+        return;
+      }
+      const payload = normalizeContext(await res.json());
+      setInnaContext(payload);
+      setContextDraft(payload);
+      setContextError(null);
+      setContextSaveNotice({
+        message: 'Business context saved.',
+        savedAt: new Date().toLocaleTimeString([], {
+          hour: '2-digit',
+          minute: '2-digit',
+          second: '2-digit',
+        }),
+      });
+    } catch {
+      setContextError('Could not save business context.');
+      setContextSaveNotice(null);
+    } finally {
+      setIsContextSaving(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!contextSaveNotice) return;
+    const timer = window.setTimeout(() => setContextSaveNotice(null), 3000);
+    return () => window.clearTimeout(timer);
+  }, [contextSaveNotice]);
+
   const telegramUrl = process.env.TELEGRAM_BOT_USERNAME
     ? `https://t.me/${process.env.TELEGRAM_BOT_USERNAME}`
     : null;
 
   return (
-    <div className="min-h-screen text-slate-800 font-sans selection:bg-blue-100">
+    <div className="min-h-screen text-slate-800 font-sans selection:bg-blue-100 palette-darken-20">
       {/* Mobile Nav */}
       <div className="lg:hidden bg-white border-b border-slate-100 p-4 flex justify-between items-center sticky top-0 z-50">
         <div className="flex items-center gap-2">
@@ -54,6 +206,9 @@ export default function App() {
           </button>
           <button onClick={() => setActiveTab('configuration')} className={cn("p-2", activeTab === 'configuration' ? "text-blue-500" : "text-slate-400")}>
             <CalendarDays size={20} />
+          </button>
+          <button onClick={() => setActiveTab('bot')} className={cn("p-2", activeTab === 'bot' ? "text-blue-500" : "text-slate-400")}>
+            <TerminalSquare size={20} />
           </button>
           <button onClick={() => setActiveTab('strategy')} className={cn("p-2", activeTab === 'strategy' ? "text-blue-500" : "text-slate-400")}>
             <FileText size={20} />
@@ -88,11 +243,17 @@ export default function App() {
             active={activeTab === 'configuration'} 
             onClick={() => setActiveTab('configuration')} 
           />
-          <NavItem 
-            icon={<FileText size={20} />} 
-            label="Business Strategy" 
-            active={activeTab === 'strategy'} 
-            onClick={() => setActiveTab('strategy')} 
+          <NavItem
+            icon={<TerminalSquare size={20} />}
+            label="Bot Monitor"
+            active={activeTab === 'bot'}
+            onClick={() => setActiveTab('bot')}
+          />
+          <NavItem
+            icon={<FileText size={20} />}
+            label="Business Strategy"
+            active={activeTab === 'strategy'}
+            onClick={() => setActiveTab('strategy')}
           />
         </nav>
 
@@ -115,11 +276,13 @@ export default function App() {
             <h2 className="text-2xl font-bold text-slate-900">
               {activeTab === 'dashboard' && "Command Center"}
               {activeTab === 'configuration' && "Plan Configuration"}
+              {activeTab === 'bot' && "Bot Monitor"}
               {activeTab === 'strategy' && "Business Strategy 2025"}
             </h2>
             <p className="text-slate-500">
               {activeTab === 'dashboard' && "Your Telegram-first media pipeline"}
               {activeTab === 'configuration' && "Manage your upcoming content plans"}
+              {activeTab === 'bot' && "Recent bot commands, operational outcomes, and severe errors"}
               {activeTab === 'strategy' && "Roadmap and goals for Shiatsu Inna"}
             </p>
           </div>
@@ -230,6 +393,17 @@ export default function App() {
             </motion.div>
           )}
 
+          {activeTab === 'bot' && (
+            <motion.div
+              key="bot"
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+            >
+              <BotStatusPage />
+            </motion.div>
+          )}
+
           {activeTab === 'strategy' && (
             <motion.div 
               key="strategy"
@@ -245,9 +419,9 @@ export default function App() {
                     Executive Summary
                   </h3>
                   <p className="text-slate-600 leading-relaxed mb-4">
-                    AI-driven social media promotion for Inna's Shiatsu practice. 
-                    Targeting women 40+ in Tel Aviv and Gush Dan (Givatayim, Ramat Gan, Holon, Bat Yam).
-                    Inna maintains full control via an approval-based workflow.
+                    AI-driven social media promotion for {innaContext.name}'s {innaContext.specialty} practice.
+                    Targeting {innaContext.targetAudience} in {innaContext.location}.
+                    {innaContext.philosophy}
                   </p>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="p-4 bg-blue-50 rounded-2xl">
@@ -267,9 +441,9 @@ export default function App() {
                     Target Audience Segments
                   </h3>
                   <div className="space-y-4">
-                    <AudienceItem title="Busy Professionals" desc="Stress relief and neck/shoulder pain from desk work." />
-                    <AudienceItem title="Active Women 40+" desc="Orthopedic support and maintaining vitality." />
-                    <AudienceItem title="Local Residents" desc="Seeking a trusted practitioner in their neighborhood." />
+                    <AudienceItem title="Primary Audience" desc={innaContext.targetAudience} />
+                    <AudienceItem title="Location Focus" desc={innaContext.location} />
+                    <AudienceItem title="Core Specialty" desc={innaContext.specialty} />
                   </div>
                 </section>
 
@@ -287,22 +461,79 @@ export default function App() {
               </div>
 
               <div className="space-y-8">
+                <section className="bg-white rounded-3xl p-8 border border-slate-100 shadow-sm space-y-4">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <h3 className="text-xl font-bold text-slate-900">Persona Context Editor</h3>
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={loadInnaContext}
+                        className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 text-slate-600 hover:bg-slate-50"
+                      >
+                        <RefreshCw size={14} className={cn(isContextLoading && 'animate-spin')} /> Reload
+                      </button>
+                      <button
+                        onClick={handleSaveContext}
+                        disabled={!hasContextChanges || isContextSaving}
+                        className={cn(
+                          'inline-flex items-center gap-1.5 px-3 py-2 rounded-xl text-white',
+                          hasContextChanges && !isContextSaving ? 'bg-blue-500 hover:bg-blue-600' : 'bg-blue-300 cursor-not-allowed'
+                        )}
+                      >
+                        <Save size={14} /> {isContextSaving ? 'Saving...' : 'Save'}
+                      </button>
+                    </div>
+                  </div>
+                  {contextError && (
+                    <div className="rounded-xl bg-red-50 border border-red-200 text-red-700 px-3 py-2 text-sm flex items-center gap-2">
+                      <AlertTriangle size={14} className="text-red-500" />
+                      {contextError}
+                    </div>
+                  )}
+                  {contextSaveNotice && (
+                    <div className="rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 px-3 py-2 text-sm">
+                      <div className="font-medium">{contextSaveNotice.message}</div>
+                      <div className="text-xs text-emerald-600 mt-0.5">Saved at {contextSaveNotice.savedAt}</div>
+                    </div>
+                  )}
+                  <div className="grid grid-cols-1 gap-3">
+                    <LabeledInput label="Name" value={contextDraft.name} onChange={(value) => setContextDraft(prev => ({ ...prev, name: value }))} />
+                    <LabeledInput label="Specialty" value={contextDraft.specialty} onChange={(value) => setContextDraft(prev => ({ ...prev, specialty: value }))} />
+                    <LabeledInput label="Location" value={contextDraft.location} onChange={(value) => setContextDraft(prev => ({ ...prev, location: value }))} />
+                    <LabeledTextarea label="Philosophy" rows={3} value={contextDraft.philosophy} onChange={(value) => setContextDraft(prev => ({ ...prev, philosophy: value }))} />
+                    <LabeledTextarea label="Target Audience" rows={2} value={contextDraft.targetAudience} onChange={(value) => setContextDraft(prev => ({ ...prev, targetAudience: value }))} />
+                    <LabeledTextarea label="Voice Tone" rows={2} value={contextDraft.voice.tone} onChange={(value) => setContextDraft(prev => ({ ...prev, voice: { ...prev.voice, tone: value } }))} />
+                    <LabeledTextarea label="Voice Style" rows={2} value={contextDraft.voice.style} onChange={(value) => setContextDraft(prev => ({ ...prev, voice: { ...prev.voice, style: value } }))} />
+                    <LabeledTextarea
+                      label="Forbidden Words (one per line)"
+                      rows={4}
+                      value={contextDraft.voice.forbiddenWords.join('\n')}
+                      onChange={(value) => setContextDraft(prev => ({ ...prev, voice: { ...prev.voice, forbiddenWords: parseListFromTextarea(value) } }))}
+                    />
+                    <LabeledTextarea
+                      label="Quotes (one per line)"
+                      rows={5}
+                      value={contextDraft.quotes.join('\n')}
+                      onChange={(value) => setContextDraft(prev => ({ ...prev, quotes: parseListFromTextarea(value) }))}
+                    />
+                  </div>
+                </section>
+
                 <section className="bg-slate-900 text-white rounded-3xl p-8 shadow-xl">
                   <h3 className="text-xl font-bold mb-6 flex items-center gap-2">
                     <MessageSquare className="text-blue-400" />
-                    Inna's Voice
+                    {innaContext.name}'s Voice
                   </h3>
                   <div className="space-y-4">
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Core Philosophy</p>
-                      <p className="text-sm italic text-slate-300">"The treatment is who you are. It's a dialogue between practitioner and patient."</p>
+                      <p className="text-sm italic text-slate-300">"{innaContext.quotes[0] ?? innaContext.philosophy}"</p>
                     </div>
                     <div>
                       <p className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">Tone Guidelines</p>
                       <ul className="text-sm space-y-2 text-slate-300">
-                        <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-green-400" /> Warm & Human</li>
-                        <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-green-400" /> Expert but Accessible</li>
-                        <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-green-400" /> No Aggressive Sales</li>
+                        <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-green-400" /> {innaContext.voice.tone}</li>
+                        <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-green-400" /> {innaContext.voice.style}</li>
+                        <li className="flex items-center gap-2"><CheckCircle2 size={14} className="text-green-400" /> Forbidden: {innaContext.voice.forbiddenWords.join(', ')}</li>
                       </ul>
                     </div>
                   </div>
@@ -314,7 +545,7 @@ export default function App() {
                     Geotargeting
                   </h3>
                   <div className="flex flex-wrap gap-2">
-                    {["Tel Aviv", "Givatayim", "Ramat Gan", "Holon", "Bat Yam"].map(city => (
+                    {getLocationChips(innaContext.location).map(city => (
                       <span key={city} className="px-3 py-1 bg-slate-50 text-slate-600 rounded-full text-xs font-medium border border-slate-100">
                         {city}
                       </span>
@@ -330,14 +561,51 @@ export default function App() {
   );
 }
 
+function LabeledInput({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
+  return (
+    <label className="space-y-1">
+      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+      />
+    </label>
+  );
+}
+
+function LabeledTextarea({
+  label,
+  value,
+  onChange,
+  rows,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  rows: number;
+}) {
+  return (
+    <label className="space-y-1">
+      <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{label}</span>
+      <textarea
+        rows={rows}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+      />
+    </label>
+  );
+}
+
 function NavItem({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
   return (
-    <button 
+    <button
       onClick={onClick}
       className={cn(
         "w-full flex items-center gap-3 px-4 py-3 rounded-xl font-medium transition-all",
-        active 
-          ? "bg-blue-50 text-blue-600 shadow-sm" 
+        active
+          ? "bg-blue-50 text-blue-600 shadow-sm"
           : "text-slate-500 hover:bg-slate-50 hover:text-slate-900"
       )}
     >

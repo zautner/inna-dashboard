@@ -9,22 +9,41 @@
  */
 import express from 'express';
 import rateLimit from 'express-rate-limit';
-import multer from 'multer';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import {
+  createMediaUploadMiddleware,
+  persistPlans,
+  readBotMonitor,
+  readInnaContext,
+  readPublishingOverview,
+  readPlans,
+  readQueueStats,
+  resolveStoragePaths,
+  ensureStorage,
+  writeInnaContext,
+} from './plansStorage.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
-const PLANS_FILE = path.join(__dirname, 'plans.json');
-const BOT_QUEUE_FILE = path.join(__dirname, 'bot', 'media_queue.json');
-const UPLOADS_DIR = path.join(__dirname, 'uploads');
+const {
+  plansFile: PLANS_FILE,
+  botQueueFile: BOT_QUEUE_FILE,
+  botActivityFile: BOT_ACTIVITY_FILE,
+  uploadsDir: UPLOADS_DIR,
+  innaContextFile: INNA_CONTEXT_FILE,
+} = resolveStoragePaths(__dirname);
 const PORT = parseInt(process.env.API_PORT || process.env.PORT || '3000', 10);
 const SERVE_STATIC = process.env.API_ONLY !== 'true';
 
-if (!fs.existsSync(UPLOADS_DIR)) {
-  fs.mkdirSync(UPLOADS_DIR, { recursive: true });
-}
+ensureStorage({
+  plansFile: PLANS_FILE,
+  botQueueFile: BOT_QUEUE_FILE,
+  botActivityFile: BOT_ACTIVITY_FILE,
+  uploadsDir: UPLOADS_DIR,
+  innaContextFile: INNA_CONTEXT_FILE,
+});
 
 const app = express();
 app.use(express.json());
@@ -32,23 +51,7 @@ app.use(express.json());
 // Serve uploaded media files
 app.use('/uploads', express.static(UPLOADS_DIR));
 
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => cb(null, UPLOADS_DIR),
-    filename: (_req, file, cb) => {
-      const ext = path.extname(file.originalname).toLowerCase();
-      cb(null, `${Date.now()}-${Math.random().toString(36).slice(2)}${ext}`);
-    },
-  }),
-  limits: { fileSize: 200 * 1024 * 1024 }, // 200 MB max
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-      cb(null, true);
-    } else {
-      cb(new Error('Only image and video files are allowed'));
-    }
-  },
-});
+const upload = createMediaUploadMiddleware(UPLOADS_DIR);
 
 // Apply rate limiting to all API routes
 const apiLimiter = rateLimit({
@@ -77,25 +80,40 @@ app.post('/api/media/upload', upload.single('file'), (req, res) => {
 // GET /api/queue-stats — return per-status counts from the bot queue
 app.get('/api/queue-stats', (_req, res) => {
   try {
-    const queue = fs.existsSync(BOT_QUEUE_FILE)
-      ? JSON.parse(fs.readFileSync(BOT_QUEUE_FILE, 'utf-8'))
-      : [];
-    const inQueue = queue.filter(i => ['new', 'waiting_media'].includes(i.status)).length;
-    const draftsPending = queue.filter(i => ['draft', 'rethinking'].includes(i.status)).length;
-    const approved = queue.filter(i => i.status === 'approved').length;
-    res.json({ inQueue, draftsPending, approved });
+    res.json(readQueueStats(BOT_QUEUE_FILE));
   } catch {
     res.json({ inQueue: 0, draftsPending: 0, approved: 0 });
+  }
+});
+
+app.get('/api/bot-monitor', (_req, res) => {
+  try {
+    res.json({
+      ...readBotMonitor(BOT_ACTIVITY_FILE),
+      publishing: readPublishingOverview(BOT_QUEUE_FILE),
+    });
+  } catch {
+    res.json({
+      commands: [],
+      severeErrors: [],
+      lastUpdatedAt: null,
+      publishing: {
+        waitingForApproval: 0,
+        waitingForSchedule: 0,
+        scheduledTargets: 0,
+        publishedTargets: 0,
+        failedTargets: 0,
+        nextPublishAt: null,
+        upcoming: [],
+      },
+    });
   }
 });
 
 // GET /api/plans — load all saved plans
 app.get('/api/plans', (_req, res) => {
   try {
-    const data = fs.existsSync(PLANS_FILE)
-      ? JSON.parse(fs.readFileSync(PLANS_FILE, 'utf-8'))
-      : [];
-    res.json(data);
+    res.json(readPlans(PLANS_FILE));
   } catch {
     res.json([]);
   }
@@ -108,9 +126,29 @@ app.post('/api/plans', (req, res) => {
     if (!Array.isArray(plans)) {
       return res.status(400).json({ error: 'Body must be an array of plans' });
     }
-    fs.writeFileSync(PLANS_FILE, JSON.stringify(plans, null, 2), 'utf-8');
-    queueApprovedItemsForBot(plans);
+    persistPlans(plans, { plansFile: PLANS_FILE, botQueueFile: BOT_QUEUE_FILE, uploadsDir: UPLOADS_DIR });
     res.json({ success: true });
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+app.get('/api/inna-context', (_req, res) => {
+  try {
+    res.json(readInnaContext(INNA_CONTEXT_FILE));
+  } catch (err) {
+    res.status(500).json({ error: String(err) });
+  }
+});
+
+app.put('/api/inna-context', (req, res) => {
+  try {
+    const payload = req.body;
+    if (!payload || typeof payload !== 'object' || Array.isArray(payload)) {
+      return res.status(400).json({ error: 'Body must be an object' });
+    }
+    const saved = writeInnaContext(INNA_CONTEXT_FILE, payload);
+    res.json(saved);
   } catch (err) {
     res.status(500).json({ error: String(err) });
   }
@@ -128,53 +166,6 @@ if (SERVE_STATIC) {
   });
 }
 
-/**
- * Builds a human-readable caption for a plan item used as context by the bot.
- */
-function buildPlanItemCaption(planName, item) {
-  const tags = item.tags && item.tags.length ? ` | Tags: ${item.tags.join(', ')}` : '';
-  return `Plan: ${planName} | ${item.day} | ${item.contentTypes.join(', ')}${tags}`;
-}
-
-/**
- * Adds approved plan items that are not yet in the bot queue to media_queue.json.
- * The bot detects items with file_id === null (plan items) and requests media from Inna.
- */
-function queueApprovedItemsForBot(plans) {
-  let botQueue = [];
-  if (fs.existsSync(BOT_QUEUE_FILE)) {
-    try { botQueue = JSON.parse(fs.readFileSync(BOT_QUEUE_FILE, 'utf-8')); } catch { /* ignore */ }
-  }
-
-  const existingPlanItemIds = new Set(
-    botQueue.filter(i => i.plan_item_id).map(i => i.plan_item_id)
-  );
-
-  let changed = false;
-  for (const plan of plans) {
-    for (const item of plan.items) {
-      if (item.status === 'approved' && !existingPlanItemIds.has(item.id)) {
-        const shortId = String(item.id).slice(-8);
-        botQueue.push({
-          id: `pi-${shortId}`,
-          plan_item_id: item.id,
-          plan_id: plan.id,
-          plan_name: plan.name,
-          file_id: null,
-          file_type: item.mediaType === 'any' ? 'photo' : item.mediaType,
-          caption: buildPlanItemCaption(plan.name, item),
-          status: 'new',
-          generated_text: '',
-        });
-        changed = true;
-      }
-    }
-  }
-
-  if (changed) {
-    fs.writeFileSync(BOT_QUEUE_FILE, JSON.stringify(botQueue, null, 2), 'utf-8');
-  }
-}
 
 app.listen(PORT, () => {
   console.log(`API server running on port ${PORT}`);

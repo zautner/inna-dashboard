@@ -18,21 +18,21 @@ ENV TELEGRAM_BOT_USERNAME=${TELEGRAM_BOT_USERNAME}
 
 RUN npm run build
 
-# Stage 2: Serve the built files with nginx
-FROM nginx:stable-alpine
+# Stage 2: Run the production API server that also serves the built app
+FROM node:22-alpine
 
-COPY --from=builder /app/dist /usr/share/nginx/html
+WORKDIR /app
 
-# Single-page app: redirect all routes to index.html
-RUN echo $'server {\n\
-    listen 80;\n\
-    root /usr/share/nginx/html;\n\
-    index index.html;\n\
-    location / {\n\
-        try_files $uri $uri/ /index.html;\n\
-    }\n\
-}' > /etc/nginx/conf.d/default.conf
+COPY package.json package-lock.json ./
+RUN npm ci --omit=dev
 
-EXPOSE 80
+COPY --from=builder /app/dist ./dist
+COPY server.js plansStorage.js ./
+COPY bot ./bot
 
-CMD ["nginx", "-g", "daemon off;"]
+ENV NODE_ENV=production
+ENV PORT=3000
+
+EXPOSE 3000
+
+CMD ["node", "server.js"]

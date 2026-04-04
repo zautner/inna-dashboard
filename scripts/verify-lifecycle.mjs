@@ -2,6 +2,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { persistPlans, readPlans, readQueueStats } from '../plansStorage.js';
+import { resolveItemSchedule } from '../scheduleUtils.js';
 
 function assert(condition, message) {
   if (!condition) {
@@ -15,6 +16,7 @@ function createPlanWithItem({ mediaUrl, uploadedMediaType, status = 'approved' }
     name: 'Weekly Plan',
     type: 'week',
     status: 'open',
+    startDate: '2026-04-06',
     items: [{
       id: 'item-1',
       day: 'Monday',
@@ -41,6 +43,7 @@ fs.writeFileSync(newFile, 'new-media');
 
 // 1. Save a new plan with one processing item and verify persistence + queue creation.
 const initialPlans = createPlanWithItem({ mediaUrl: '/uploads/old.jpg', uploadedMediaType: 'photo' });
+const expectedPublishAt = resolveItemSchedule('2026-04-06', 'Monday').publishAt;
 persistPlans(initialPlans, { plansFile, botQueueFile, uploadsDir });
 
 const initialQueue = JSON.parse(fs.readFileSync(botQueueFile, 'utf8'));
@@ -48,7 +51,9 @@ assert(initialQueue.length === 1, 'Expected one queue item after initial save.')
 assert(initialQueue[0].plan_item_id === 'item-1', 'Expected queue item to reference the plan item.');
 assert(initialQueue[0].media_url === '/uploads/old.jpg', 'Expected queue item to point at the uploaded photo.');
 assert(initialQueue[0].file_type === 'photo', 'Expected queue item to preserve the uploaded media type.');
+assert(initialQueue[0].publish_at === expectedPublishAt, 'Expected queue item publish_at to be derived from plan start date and item day.');
 assert(readPlans(plansFile)[0].status === 'open', 'Expected the saved plan to remain open.');
+assert(readPlans(plansFile)[0].items[0].publishAt === expectedPublishAt, 'Expected the saved plan item publishAt to be derived automatically.');
 assert(readQueueStats(botQueueFile).inQueue === 1, 'Expected queue stats to report one queued item.');
 
 // 2. Replace the media and verify queue update + server-file cleanup.

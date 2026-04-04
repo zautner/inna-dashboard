@@ -1,6 +1,7 @@
 import fs from 'fs';
 import multer from 'multer';
 import path from 'path';
+import { applyDerivedScheduleToPlan } from './scheduleUtils.js';
 
 const PLAN_ITEM_PROCESSING_STATUS = 'approved';
 const UPLOAD_ROUTE_PREFIX = '/uploads/';
@@ -170,11 +171,14 @@ export function buildPlanItemCaption(planName, item) {
 export function persistPlans(plans, { plansFile, botQueueFile, uploadsDir }) {
   ensureStorage({ plansFile, botQueueFile, uploadsDir });
 
+  const normalizedPlans = Array.isArray(plans)
+    ? plans.map(plan => applyDerivedScheduleToPlan(plan))
+    : [];
   const previousPlans = readPlans(plansFile);
-  fs.writeFileSync(plansFile, JSON.stringify(plans, null, 2), 'utf-8');
+  fs.writeFileSync(plansFile, JSON.stringify(normalizedPlans, null, 2), 'utf-8');
 
-  syncBotQueue(plans, botQueueFile);
-  deleteRemovedUploads(previousPlans, plans, uploadsDir);
+  syncBotQueue(normalizedPlans, botQueueFile);
+  deleteRemovedUploads(previousPlans, normalizedPlans, uploadsDir);
 }
 
 function syncBotQueue(plans, botQueueFile) {

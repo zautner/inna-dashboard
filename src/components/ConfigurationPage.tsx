@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Upload, Image as ImageIcon, Video, CalendarDays, CheckCircle2, Clock, XCircle, Send, X, Save, Pencil, ArrowLeft, HelpCircle } from 'lucide-react';
 import { cn } from '../lib/utils';
+import { applyDerivedScheduleToPlan, normalizePlanStartDate, resolveItemSchedule } from '../../scheduleUtils.js';
 
 export type PlanType = 'week' | 'month' | 'quarter';
 export type MediaType = 'photo' | 'video' | 'any';
@@ -27,8 +28,15 @@ export interface Plan {
   name: string;
   type: PlanType;
   status: PlanStatus;
+  startDate?: string;
   items: PlanItem[];
 }
+
+const getTodayDateInputValue = (): string => {
+  const now = new Date();
+  const pad = (value: number) => String(value).padStart(2, '0');
+  return `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+};
 
 const inferUploadedMediaType = (mediaUrl?: string, mediaType?: MediaType): UploadedMediaType | undefined => {
   if (mediaUrl) {
@@ -41,14 +49,6 @@ const inferUploadedMediaType = (mediaUrl?: string, mediaType?: MediaType): Uploa
   return undefined;
 };
 
-const toDateTimeLocalValue = (value?: string): string => {
-  if (!value) return '';
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  const pad = (part: number) => String(part).padStart(2, '0');
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
-};
-
 const formatPublishAt = (value?: string): string => {
   if (!value) return 'No publish time set';
   const date = new Date(value);
@@ -56,11 +56,19 @@ const formatPublishAt = (value?: string): string => {
   return date.toLocaleString();
 };
 
-const normalizePlan = (rawPlan: any): Plan => ({
+const formatStartDate = (value?: string): string => {
+  if (!value) return 'No start date set';
+  const date = new Date(`${value}T00:00:00`);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleDateString();
+};
+
+const normalizePlan = (rawPlan: any): Plan => applyDerivedScheduleToPlan({
   id: String(rawPlan?.id ?? crypto.randomUUID()),
   name: String(rawPlan?.name ?? 'Untitled Plan'),
   type: rawPlan?.type === 'month' || rawPlan?.type === 'quarter' ? rawPlan.type : 'week',
   status: rawPlan?.status === 'closed' ? 'closed' : 'open',
+  startDate: normalizePlanStartDate(rawPlan?.startDate),
   items: Array.isArray(rawPlan?.items)
     ? rawPlan.items.map((item: any, index: number): PlanItem => ({
         id: String(item?.id ?? `${rawPlan?.id ?? 'plan'}-${index}`),
@@ -120,6 +128,7 @@ export default function ConfigurationPage() {
 
   // Form state
   const [planType, setPlanType] = useState<PlanType>('week');
+  const [planStartDate, setPlanStartDate] = useState<string>(getTodayDateInputValue());
   const [requirements, setRequirements] = useState<{day: string, mediaType: MediaType, contentTypes: ContentType[]}[]>(
     getDefaultRequirements('week')
   );
@@ -158,21 +167,21 @@ export default function ConfigurationPage() {
   };
 
   const handleCreatePlan = () => {
-    const newPlan: Plan = {
+    const newPlan = applyDerivedScheduleToPlan({
       id: Date.now().toString(),
       name: `${planType.charAt(0).toUpperCase() + planType.slice(1)} Plan`,
       type: planType,
       status: 'open',
+      startDate: planStartDate,
       items: requirements.map((req, i) => ({
         id: `${Date.now()}-${i}`,
         day: req.day,
-        publishAt: undefined,
         mediaType: req.mediaType,
         contentTypes: req.contentTypes,
         status: 'preparing',
         tags: []
       }))
-    };
+    });
     setPlan(newPlan);
     setIsEditing(true);
     setIsCreating(false);
@@ -208,14 +217,14 @@ export default function ConfigurationPage() {
     }
 
     // Apply server URLs and remove successfully uploaded items from pendingFiles
-    let latestPlan = plan;
+    let latestPlan = applyDerivedScheduleToPlan(plan);
     if (successfulUploads.size > 0) {
-      latestPlan = {
+      latestPlan = applyDerivedScheduleToPlan({
         ...latestPlan,
         items: latestPlan.items.map(i =>
           successfulUploads.has(i.id) ? { ...i, mediaUrl: successfulUploads.get(i.id) } : i
         ),
-      };
+      });
       setPendingFiles(prev => {
         const next = new Map(prev);
         for (const itemId of successfulUploads.keys()) next.delete(itemId);
@@ -258,7 +267,11 @@ export default function ConfigurationPage() {
   };
 
   const handleStartProcessing = (itemId: string) => {
-    const currentItem = plan?.items.find(item => item.id === itemId);
+    const currentPlan = plan ? applyDerivedScheduleToPlan(plan) : null;
+    const currentItem = currentPlan?.items.find(item => item.id === itemId);
+    if (currentPlan) {
+      setPlan(currentPlan);
+    }
     if (!currentItem?.publishAt) {
       setPublishErrors(prev => Array.from(new Set([...prev, itemId])));
       return;
@@ -357,22 +370,22 @@ export default function ConfigurationPage() {
   const handleUpdateItemDay = (itemId: string, day: string) => {
     setPlan(prev => {
       if (!prev) return prev;
-      return {
+      return applyDerivedScheduleToPlan({
         ...prev,
         items: prev.items.map(item => item.id === itemId ? { ...item, day } : item)
-      };
+      });
     });
   };
 
-  const handleUpdateItemPublishAt = (itemId: string, publishAtValue: string) => {
+  const handleUpdatePlanStartDate = (startDate: string) => {
     setPlan(prev => {
       if (!prev) return prev;
-      return {
+      return applyDerivedScheduleToPlan({
         ...prev,
-        items: prev.items.map(item => item.id === itemId ? { ...item, publishAt: publishAtValue ? new Date(publishAtValue).toISOString() : undefined } : item)
-      };
+        startDate,
+      });
     });
-    setPublishErrors(prev => prev.filter(id => id !== itemId));
+    setPublishErrors([]);
   };
 
   const handleUpdateItemMediaType = (itemId: string, mediaType: MediaType) => {
@@ -410,7 +423,6 @@ export default function ConfigurationPage() {
     const newItem: PlanItem = {
       id: crypto.randomUUID(),
       day: '',
-      publishAt: undefined,
       mediaType: 'any',
       contentTypes: ['Instagram Feed'],
       status: 'preparing',
@@ -418,7 +430,7 @@ export default function ConfigurationPage() {
     };
     setPlan(prev => {
       if (!prev) return prev;
-      return { ...prev, items: [...prev.items, newItem] };
+      return applyDerivedScheduleToPlan({ ...prev, items: [...prev.items, newItem] });
     });
   };
 
@@ -460,6 +472,7 @@ export default function ConfigurationPage() {
                     >
                       <h4 className="font-bold text-slate-900 truncate pr-8">{p.name}</h4>
                       <p className="text-slate-500 text-sm capitalize mt-0.5">{p.type} plan · {p.items.length} posts · {p.status === 'closed' ? 'closed' : 'open'}</p>
+                      <p className="text-slate-400 text-xs mt-1">Starts: {formatStartDate(p.startDate)}</p>
                       <div className="flex gap-3 mt-3 text-xs font-medium">
                         <span className="text-green-600">{approvedCount} approved</span>
                         <span className="text-blue-600">{postedCount} posted</span>
@@ -529,6 +542,19 @@ export default function ConfigurationPage() {
           </div>
         </div>
 
+        <div className="mb-6">
+          <label className="block text-sm font-bold text-slate-700 mb-2">Plan Start Date</label>
+          <input
+            type="date"
+            value={planStartDate}
+            onChange={(e) => setPlanStartDate(e.target.value)}
+            className="w-full bg-white border border-slate-200 rounded-xl px-3 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+          />
+          <p className="mt-2 text-xs text-slate-500">
+            You only need to choose when the plan starts. Each item's publish day is then derived automatically from its day label.
+          </p>
+        </div>
+
         <div className="mb-8">
           <div className="flex justify-between items-center mb-4">
             <label className="block text-sm font-bold text-slate-700">Post Requirements</label>
@@ -546,7 +572,7 @@ export default function ConfigurationPage() {
                 <div className="flex gap-3 items-center">
                   <input 
                     type="text" 
-                    placeholder="Day (e.g., Monday, Day 5)" 
+                    placeholder="Day (e.g., Monday, Week 2 - Thursday, Day 5)"
                     value={req.day}
                     onChange={(e) => {
                       const newReqs = [...requirements];
@@ -619,7 +645,13 @@ export default function ConfigurationPage() {
           </button>
           <button 
             onClick={handleCreatePlan}
-            className="bg-blue-500 text-white px-6 py-3 rounded-xl font-semibold hover:bg-blue-600 transition-all shadow-sm"
+            disabled={!planStartDate}
+            className={cn(
+              "px-6 py-3 rounded-xl font-semibold transition-all shadow-sm",
+              planStartDate
+                ? "bg-blue-500 text-white hover:bg-blue-600"
+                : "bg-blue-200 text-blue-100 cursor-not-allowed shadow-none"
+            )}
           >
             Generate Plan
           </button>
@@ -677,7 +709,24 @@ export default function ConfigurationPage() {
               </span>
             </div>
           )}
-          <p className="text-slate-500 text-sm">{plan?.items.length} posts scheduled{isEditing && <span className="ml-2 text-blue-500">· Click Save when done</span>}</p>
+          <p className="text-slate-500 text-sm">
+            {plan?.items.length} posts scheduled · Starts {formatStartDate(plan?.startDate)}
+            {isEditing && <span className="ml-2 text-blue-500">· Click Save when done</span>}
+          </p>
+          {isEditing && (
+            <div className="mt-4 max-w-sm">
+              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Plan Start Date</label>
+              <input
+                type="date"
+                value={plan?.startDate ?? ''}
+                onChange={(e) => handleUpdatePlanStartDate(e.target.value)}
+                className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+              />
+              <p className="mt-2 text-xs text-slate-500">
+                Item publish dates are calculated automatically from this start date and each item's day label.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -706,7 +755,7 @@ export default function ConfigurationPage() {
             </li>
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">3</span>
-              <span><strong>Set the publish time</strong> — every item that enters processing needs an exact publish date and time, so the bot can hold it until the right moment and route it to the requested social channel(s).</span>
+              <span><strong>Set the plan start date</strong> — each item's exact publish day is calculated automatically from the plan start and the item's day label, so the bot knows when to publish it.</span>
             </li>
             <li className="flex gap-3">
               <span className="shrink-0 w-6 h-6 rounded-full bg-blue-200 text-blue-700 font-bold flex items-center justify-center text-xs">4</span>
@@ -738,7 +787,8 @@ export default function ConfigurationPage() {
           const canEditStructure = isEditing && !isItemLocked;
           const canEditMedia = !isItemLocked;
           const mediaAccept = item.mediaType === 'video' ? 'video/*' : item.mediaType === 'any' ? 'image/*,video/*' : 'image/*';
-          
+          const schedule = resolveItemSchedule(plan?.startDate, item.day, item.publishAt);
+
           return (
             <div key={item.id} className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden flex flex-col">
               <div className="p-5 border-b border-slate-50 bg-slate-50/50">
@@ -765,7 +815,7 @@ export default function ConfigurationPage() {
                         <input
                           value={item.day}
                           onChange={(e) => handleUpdateItemDay(item.id, e.target.value)}
-                          placeholder="Day (e.g., Monday)"
+                          placeholder="Day (e.g., Monday, Week 2 - Thursday, Day 5)"
                           className="font-bold text-slate-900 text-sm border-b border-slate-300 outline-none bg-transparent w-full mb-1 focus:border-blue-500"
                         />
                       ) : (
@@ -800,20 +850,19 @@ export default function ConfigurationPage() {
                       <div className="mt-2 text-xs text-slate-500">
                         {canEditStructure ? (
                           <div className="flex flex-col gap-1.5">
-                            <label className="font-semibold text-slate-500 uppercase tracking-wider">Publish At</label>
-                            <input
-                              type="datetime-local"
-                              value={toDateTimeLocalValue(item.publishAt)}
-                              onChange={(e) => handleUpdateItemPublishAt(item.id, e.target.value)}
+                            <label className="font-semibold text-slate-500 uppercase tracking-wider">Derived Publish Time</label>
+                            <div
                               className={cn(
-                                "rounded-xl border px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20",
-                                publishErrors.includes(item.id)
-                                  ? "border-red-300 bg-red-50 text-red-700 focus:border-red-400"
-                                  : "border-slate-200 bg-white text-slate-700 focus:border-blue-500"
+                                "rounded-xl border px-3 py-2 text-sm",
+                                schedule.error || publishErrors.includes(item.id)
+                                  ? "border-red-300 bg-red-50 text-red-700"
+                                  : "border-slate-200 bg-slate-50 text-slate-700"
                               )}
-                            />
-                            {publishErrors.includes(item.id) && (
-                              <span className="text-red-600">Set a publish date and time before starting processing.</span>
+                            >
+                              {schedule.publishAt ? formatPublishAt(schedule.publishAt) : 'Publish time will appear here'}
+                            </div>
+                            {(schedule.error || publishErrors.includes(item.id)) && (
+                              <span className="text-red-600">{schedule.error ?? 'Set a plan start date and a recognizable day label before starting processing.'}</span>
                             )}
                           </div>
                         ) : (

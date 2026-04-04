@@ -172,7 +172,7 @@ export default function BotStatusPage() {
         {isLoading ? (
           <LoadingState label="Loading publication schedule…" />
         ) : data.publishing.upcoming.length === 0 ? (
-          <EmptyState title="No upcoming scheduled publications" description="Approve items in Telegram after setting a publish date/time in the dashboard." />
+          <EmptyState title="No upcoming scheduled publications" description="Approve items in Telegram after setting the plan start date in the dashboard." />
         ) : (
           <div className="space-y-4">
             {data.publishing.upcoming.map(item => (

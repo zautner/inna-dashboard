@@ -835,20 +835,24 @@ function renderDrafts(items) {
   items.forEach((item) => {
     const preview = item.media_url
       ? item.file_type === "video"
-        ? `<video controls src="${escapeAttr(item.media_url)}"></video>`
-        : `<img src="${escapeAttr(item.media_url)}" alt="Draft media" />`
-      : `<span class="muted">No media</span>`;
+        ? `<video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video>`
+        : `<img src="${escapeAttr(item.media_url)}" alt="Draft media" loading="lazy" />`
+      : `<span class="muted" style="font-size:9px">No media</span>`;
     container.appendChild(card(`
       <div class="item-card">
-        <div class="preview-frame">${preview}</div>
-        <div class="line-meta">
-          <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-          <span>${escapeHtml(item.caption || "No caption context")}</span>
-        </div>
-        <div class="pill-row">
-          ${renderStatusPill(item.status)}
-          ${(item.publish_targets || []).map((t) => `<span class="pill">${escapeHtml(t)}</span>`).join("")}
-          ${(item.tags || []).map((tag) => `<span class="pill">#${escapeHtml(tag)}</span>`).join("")}
+        <div class="queue-item-row">
+          <div class="preview-frame">${preview}</div>
+          <div class="queue-item-body">
+            <div class="line-meta">
+              <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
+              <span>${escapeHtml(item.caption || "No caption context")}</span>
+            </div>
+            <div class="pill-row">
+              ${renderStatusPill(item.status)}
+              ${(item.publish_targets || []).map((t) => `<span class="pill">${escapeHtml(t)}</span>`).join("")}
+              ${(item.tags || []).map((tag) => `<span class="pill">#${escapeHtml(tag)}</span>`).join("")}
+            </div>
+          </div>
         </div>
         ${item.generated_text ? `<div class="ai-text-block">${escapeHtml(item.generated_text)}</div>` : `<div class="subtle">No generated text yet.</div>`}
         <div class="actions" style="margin-top:8px">
@@ -1411,20 +1415,24 @@ function handlePlanItemPlatformChange(event) {
 function renderQueueItemCard(item) {
   const preview = item.media_url
     ? item.file_type === "video"
-      ? `<video controls src="${escapeAttr(item.media_url)}"></video>`
-      : `<img src="${escapeAttr(item.media_url)}" alt="Queue media" />`
-    : `<span class="muted">No media</span>`;
+      ? `<video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video>`
+      : `<img src="${escapeAttr(item.media_url)}" alt="Queue media" loading="lazy" />`
+    : `<span class="muted" style="font-size:9px">No media</span>`;
   return card(`
     <div class="item-card">
-      <div class="preview-frame">${preview}</div>
-      <div class="line-meta">
-        <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-        <span>${escapeHtml(item.caption || "No caption")}</span>
-        <span class="subtle">${escapeHtml(item.file_type || "photo")} · ${escapeHtml(formatDate(item.publish_at))}</span>
-      </div>
-      <div class="pill-row">
-        ${renderStatusPill(item.status)}
-        ${(item.publish_targets || []).map((t) => `<span class="pill">${escapeHtml(t)}</span>`).join("")}
+      <div class="queue-item-row">
+        <div class="preview-frame">${preview}</div>
+        <div class="queue-item-body">
+          <div class="line-meta">
+            <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
+            <span>${escapeHtml(item.caption || "No caption")}</span>
+            <span class="subtle">${escapeHtml(item.file_type || "photo")} · ${escapeHtml(formatDate(item.publish_at))}</span>
+          </div>
+          <div class="pill-row">
+            ${renderStatusPill(item.status)}
+            ${(item.publish_targets || []).map((t) => `<span class="pill">${escapeHtml(t)}</span>`).join("")}
+          </div>
+        </div>
       </div>
     </div>
   `, true);

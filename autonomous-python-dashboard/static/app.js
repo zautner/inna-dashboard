@@ -268,7 +268,7 @@ async function loadHelpDocs() {
 async function loadPlans() {
   const plans = await api("/api/plans");
   state.plans = Array.isArray(plans) ? plans : [];
-  if (state.currentPlan) {
+  if (state.currentPlan && !state.planModalOpen) {
     state.currentPlan = state.plans.find((p) => p.id === state.currentPlan.id) || state.currentPlan;
     prunePendingPlanMediaNotInPlan(state.currentPlan);
   }

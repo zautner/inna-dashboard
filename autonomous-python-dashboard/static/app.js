@@ -672,7 +672,8 @@ function renderRequirementRow(requirement) {
 function generatePlanFromBuilder() {
   const type = document.getElementById("planTypeInput")?.value || "week";
   const startDate = document.getElementById("planStartDateInput")?.value || "";
-  const name = document.getElementById("planNameInput")?.value || `${type.charAt(0).toUpperCase()}${type.slice(1)} Plan`;
+  const hex8 = Math.random().toString(16).slice(2, 10).padEnd(8, "0");
+  const name = document.getElementById("planNameInput")?.value || `${t("modal.type" + type.charAt(0).toUpperCase() + type.slice(1))}-${hex8}`;
   const reqs = Array.from(document.querySelectorAll("#requirementsList .item-card")).map((row) => ({
     day: row.querySelector('[data-requirement="day"]')?.value || "",
     mediaType: row.querySelector('[data-requirement="mediaType"]')?.value || "any",

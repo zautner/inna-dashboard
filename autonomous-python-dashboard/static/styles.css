@@ -856,8 +856,8 @@ textarea { resize: vertical; font-family: inherit; }
 /* ── Language Dropdown ── */
 .lang-dropdown {
   position: fixed;
-  top: 12px;
-  right: 16px;
+  bottom: 16px;
+  left: 16px;
   z-index: 50;
 }
 .lang-toggle {
@@ -879,8 +879,8 @@ textarea { resize: vertical; font-family: inherit; }
 .lang-menu {
   display: none;
   position: absolute;
-  top: calc(100% + 4px);
-  right: 0;
+  bottom: calc(100% + 4px);
+  left: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -921,12 +921,12 @@ textarea { resize: vertical; font-family: inherit; }
   right: 16px;
 }
 [dir="rtl"] .lang-dropdown {
-  right: auto;
-  left: 16px;
+  left: auto;
+  right: 16px;
 }
 [dir="rtl"] .lang-menu {
-  right: auto;
-  left: 0;
+  left: auto;
+  right: 0;
 }
 [dir="rtl"] .lang-option {
   text-align: right;

@@ -78,6 +78,7 @@ function bindEvents() {
   document.getElementById("sidebarBackdrop")?.addEventListener("click", closeMobileSidebar);
   document.addEventListener("submit", handleDynamicSubmit);
   document.addEventListener("click", handleDynamicClick);
+  document.addEventListener("change", handlePlanFieldChange);
   document.addEventListener("change", handlePlanItemPlatformChange);
   document.addEventListener("change", handlePlanItemFileChange);
   document.addEventListener("dragover", (e) => {
@@ -1246,28 +1247,7 @@ async function handleDynamicClick(event) {
     return;
   }
 
-  if (planField) {
-    const field = planField.dataset.planField;
-    if (state.currentPlan && field) state.currentPlan[field] = event.target.value;
-    return;
-  }
-
-  if (itemField) {
-    const itemId = itemField.dataset.itemField;
-    const fieldName = itemField.dataset.fieldName;
-    if (!state.currentPlan) return;
-    const item = state.currentPlan.items?.find((i) => i.id === itemId);
-    if (item && fieldName) {
-      item[fieldName] = event.target.value;
-      if (fieldName === "startDate" || fieldName === "day") {
-        state.currentPlan = applyDerivedScheduleToPlan(state.currentPlan);
-        renderPlans();
-        return;
-      }
-      renderPlans();
-    }
-    return;
-  }
+  if (planField || itemField) return;
 
   if (appendItemBtn) {
     if (!state.currentPlan) return;
@@ -1367,6 +1347,36 @@ async function approvePlanSlotForQueue(itemId, buttonEl) {
   } finally {
     buttonEl.disabled = false;
     buttonEl.textContent = label;
+  }
+}
+
+function handlePlanFieldChange(event) {
+  const planField = event.target.closest("[data-plan-field]");
+  const itemField = event.target.closest("[data-item-field]");
+
+  if (planField) {
+    const field = planField.dataset.planField;
+    if (state.currentPlan && field) state.currentPlan[field] = event.target.value;
+    if (field === "startDate") {
+      state.currentPlan = applyDerivedScheduleToPlan(state.currentPlan);
+      renderPlans();
+    }
+    return;
+  }
+
+  if (itemField) {
+    const itemId = itemField.dataset.itemField;
+    const fieldName = itemField.dataset.fieldName;
+    if (!state.currentPlan) return;
+    const item = state.currentPlan.items?.find((i) => i.id === itemId);
+    if (item && fieldName) {
+      item[fieldName] = event.target.value;
+      if (fieldName === "startDate" || fieldName === "day") {
+        state.currentPlan = applyDerivedScheduleToPlan(state.currentPlan);
+      }
+      renderPlans();
+    }
+    return;
   }
 }
 

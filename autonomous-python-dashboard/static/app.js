@@ -834,32 +834,36 @@ function renderTimeline(items) {
   container.innerHTML = "";
   if (!items.length) { container.appendChild(emptyState(t("empty.noTimeline"), t("empty.noTimelineHint"))); return; }
   items.forEach((item) => {
-    const jobs = (item.publish_jobs || []).map((job) => {
-      const retry = job.status === "failed"
-        ? `<button class="button small ghost" data-retry-target="${escapeAttr(item.id)}" data-target="${escapeAttr(job.target)}">${escapeHtml(t("btn.retry", {target: job.target}))}</button>`
-        : "";
-      return `<div class="pill-row"><span class="pill">${escapeHtml(job.target || "?")}: ${escapeHtml(job.status || "?")}</span>${retry}</div>`;
-    }).join("");
+    const textPreview = item.generated_text
+      ? item.generated_text.length > 120 ? item.generated_text.slice(0, 120) + "…" : item.generated_text
+      : t("pub.noTextPreview");
+    const hasText = !!item.generated_text;
+    const hasFailed = (item.publish_jobs || []).some((j) => j.status === "failed");
+    const retryButtons = (item.publish_jobs || [])
+      .filter((j) => j.status === "failed")
+      .map((j) => `<button class="button small danger" data-retry-target="${escapeAttr(item.id)}" data-target="${escapeAttr(j.target)}">${escapeHtml(t("btn.retry", {target: j.target}))}</button>`)
+      .join("");
 
-    const thumb = item.media_url
-      ? (item.file_type === "video"
-        ? `<div class="timeline-thumb"><video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video></div>`
-        : `<div class="timeline-thumb"><img src="${escapeAttr(item.media_url)}" alt="" loading="lazy" /></div>`)
-      : `<div class="timeline-thumb timeline-thumb-empty">${escapeHtml(t("empty.noMedia"))}</div>`;
-
-    container.appendChild(card(`
-      <div class="timeline-row">
-        ${thumb}
-        <div class="timeline-body">
-          <div class="line-meta">
-            <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-            <span>${escapeHtml(formatDate(item.publish_at))} · ${escapeHtml(item.status)}</span>
-            <span>${escapeHtml(item.caption || "")}</span>
-          </div>
-          ${jobs || `<div class="subtle">${escapeHtml(t("empty.noPublishJobs"))}</div>`}
+    const node = document.createElement("div");
+    node.className = `queue-card queue-card-status-${escapeAttr(item.status || "approved")}`;
+    node.innerHTML = `
+      <div class="queue-card-header">
+        <strong class="queue-card-title">${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
+        <div class="pill-row">
+          ${renderStatusPill(item.status)}
+          ${(item.targets || item.publish_targets || []).map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
         </div>
       </div>
-    `));
+      <p class="queue-card-text ${hasText ? "" : "muted"}">${escapeHtml(textPreview)}</p>
+      <div class="queue-card-footer">
+        <div class="queue-card-footer-actions">
+          <button type="button" class="button small secondary" data-view-pub-item="${escapeAttr(item.id)}">${escapeHtml(t("pub.viewDetails"))}</button>
+          ${retryButtons}
+        </div>
+        <span class="queue-card-date subtle">${escapeHtml(formatDate(item.publish_at))}</span>
+      </div>
+    `;
+    container.appendChild(node);
   });
 }
 
@@ -1041,6 +1045,18 @@ async function handleDynamicClick(event) {
       const payload = await api(`/api/queue-items?status=new,waiting_media,draft,rethinking&limit=200`);
       const item = (payload.items || []).find((i) => i.id === itemId);
       if (item) openReviewModal(item);
+      else showToast("Item not found", true);
+    } catch (error) { showToast(error.message, true); }
+    return;
+  }
+
+  const viewPubBtn = event.target.closest("[data-view-pub-item]");
+  if (viewPubBtn) {
+    const itemId = viewPubBtn.dataset.viewPubItem;
+    try {
+      const payload = await api("/api/publishing-overview");
+      const item = (payload.timeline || []).find((i) => i.id === itemId);
+      if (item) openReviewModal(item, { readonly: true });
       else showToast("Item not found", true);
     } catch (error) { showToast(error.message, true); }
     return;
@@ -1366,9 +1382,11 @@ function renderQueueItemCard(item) {
 // ---------------------------------------------------------------------------
 
 let _reviewItem = null;
+let _reviewReadonly = false;
 
-function openReviewModal(item) {
+function openReviewModal(item, opts = {}) {
   _reviewItem = item;
+  _reviewReadonly = !!opts.readonly;
   const modal = document.getElementById("queueReviewModal");
   if (!modal) return;
   modal.classList.remove("hidden");
@@ -1376,22 +1394,37 @@ function openReviewModal(item) {
 
   document.getElementById("reviewModalSubtitle").textContent = item.plan_name || item.caption || item.id;
 
+  const targets = item.publish_targets || item.targets || [];
   const meta = document.getElementById("reviewModalMeta");
   if (meta) {
+    const jobPills = (item.publish_jobs || []).map((j) => {
+      const statusClass = j.status === "failed" ? "status-canceled" : j.status === "published" ? "status-approved" : "";
+      return `<span class="pill ${statusClass}">${escapeHtml(j.target || "?")}: ${escapeHtml(j.status || "?")}</span>`;
+    }).join("");
     meta.innerHTML = `
       <div class="pill-row">
         ${renderStatusPill(item.status)}
-        ${(item.publish_targets || []).map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
+        ${jobPills || targets.map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
       </div>
       <span class="subtle">${escapeHtml(formatDate(item.publish_at))}</span>
     `;
   }
 
   const textarea = document.getElementById("reviewTextArea");
-  if (textarea) textarea.value = item.generated_text || "";
+  if (textarea) {
+    textarea.value = item.generated_text || "";
+    textarea.readOnly = _reviewReadonly;
+  }
+
+  // Show/hide action buttons based on readonly
+  const approveBtn = document.getElementById("reviewApproveBtn");
+  const rethinkBtn = document.getElementById("reviewRethinkBtn");
+  const cancelBtn = document.getElementById("reviewCancelBtn");
+  if (approveBtn) approveBtn.classList.toggle("hidden", _reviewReadonly);
+  if (rethinkBtn) rethinkBtn.classList.toggle("hidden", _reviewReadonly);
+  if (cancelBtn) cancelBtn.classList.toggle("hidden", _reviewReadonly);
 
   document.getElementById("reviewRethinkSection")?.classList.add("hidden");
-  document.getElementById("reviewRethinkBtn")?.classList.remove("hidden");
   document.getElementById("reviewRethinkSubmitBtn")?.classList.add("hidden");
   const rethinkArea = document.getElementById("reviewRethinkArea");
   if (rethinkArea) rethinkArea.value = "";

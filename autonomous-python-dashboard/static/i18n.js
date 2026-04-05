@@ -40,6 +40,8 @@ const translations = {
     "pub.refresh": "Refresh",
     "pub.metrics": "Publishing Metrics",
     "pub.timeline": "Upcoming & Past Publications",
+    "pub.noTextPreview": "No text",
+    "pub.viewDetails": "View Details",
 
     // Persona page
     "persona.eyebrow": "Context",
@@ -311,6 +313,8 @@ const translations = {
     "pub.refresh": "\u041e\u043d\u043e\u0432\u0438\u0442\u0438",
     "pub.metrics": "\u041c\u0435\u0442\u0440\u0438\u043a\u0438 \u043f\u0443\u0431\u043b\u0456\u043a\u0430\u0446\u0456\u0439",
     "pub.timeline": "\u041c\u0430\u0439\u0431\u0443\u0442\u043d\u0456 \u0442\u0430 \u043c\u0438\u043d\u0443\u043b\u0456 \u043f\u0443\u0431\u043b\u0456\u043a\u0430\u0446\u0456\u0457",
+    "pub.noTextPreview": "\u0411\u0435\u0437 \u0442\u0435\u043a\u0441\u0442\u0443",
+    "pub.viewDetails": "\u041f\u0435\u0440\u0435\u0433\u043b\u044f\u043d\u0443\u0442\u0438",
 
     "persona.eyebrow": "\u041a\u043e\u043d\u0442\u0435\u043a\u0441\u0442",
     "persona.title": "\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u043f\u0435\u0440\u0441\u043e\u043d\u0438",
@@ -553,6 +557,8 @@ const translations = {
     "pub.refresh": "\u05e8\u05e2\u05e0\u05df",
     "pub.metrics": "\u05de\u05d3\u05d3\u05d9 \u05e4\u05e8\u05e1\u05d5\u05dd",
     "pub.timeline": "\u05e4\u05e8\u05e1\u05d5\u05de\u05d9\u05dd \u05e7\u05e8\u05d5\u05d1\u05d9\u05dd \u05d5\u05e7\u05d5\u05d3\u05de\u05d9\u05dd",
+    "pub.noTextPreview": "\u05d0\u05d9\u05df \u05d8\u05e7\u05e1\u05d8",
+    "pub.viewDetails": "\u05e4\u05e8\u05d8\u05d9\u05dd",
 
     "persona.eyebrow": "\u05d4\u05e7\u05e9\u05e8",
     "persona.title": "\u05e2\u05d5\u05e8\u05da \u05e4\u05e8\u05e1\u05d5\u05e0\u05d4",
@@ -795,6 +801,8 @@ const translations = {
     "pub.refresh": "\u041e\u0431\u043d\u043e\u0432\u0438\u0442\u044c",
     "pub.metrics": "\u041c\u0435\u0442\u0440\u0438\u043a\u0438 \u043f\u0443\u0431\u043b\u0438\u043a\u0430\u0446\u0438\u0439",
     "pub.timeline": "\u041f\u0440\u0435\u0434\u0441\u0442\u043e\u044f\u0449\u0438\u0435 \u0438 \u043f\u0440\u043e\u0448\u043b\u044b\u0435 \u043f\u0443\u0431\u043b\u0438\u043a\u0430\u0446\u0438\u0438",
+    "pub.noTextPreview": "\u0411\u0435\u0437 \u0442\u0435\u043a\u0441\u0442\u0430",
+    "pub.viewDetails": "\u041f\u043e\u0434\u0440\u043e\u0431\u043d\u0435\u0435",
 
     "persona.eyebrow": "\u041a\u043e\u043d\u0442\u0435\u043a\u0441\u0442",
     "persona.title": "\u0420\u0435\u0434\u0430\u043a\u0442\u043e\u0440 \u043f\u0435\u0440\u0441\u043e\u043d\u044b",

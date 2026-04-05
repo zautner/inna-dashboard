@@ -238,6 +238,7 @@ def read_publishing_timeline(limit: int = 30) -> list[dict[str, Any]]:
                 "publish_at": item.get("publish_at"),
                 "status": item.get("status"),
                 "media_url": item.get("media_url"),
+                "generated_text": item.get("generated_text") or "",
                 "publish_jobs": item.get("publish_jobs", []),
                 "targets": item.get("publish_targets", []),
             }

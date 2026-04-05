@@ -699,33 +699,11 @@ textarea { resize: vertical; font-family: inherit; }
 .subtle { font-size: 11px; color: var(--text-muted); margin-top: 3px; }
 .line-meta { display: flex; flex-direction: column; gap: 2px; }
 .line-meta strong { font-size: 13px; color: var(--text); }
-.timeline-row { display: flex; gap: 12px; align-items: flex-start; }
-.timeline-thumb {
-  flex: 0 0 56px;
-  width: 56px;
-  height: 56px;
-  border-radius: var(--radius-sm);
-  overflow: hidden;
-  background: var(--bg);
-  border: 1px solid var(--border);
-}
-.timeline-thumb img, .timeline-thumb video {
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  display: block;
-}
-.timeline-thumb-empty {
+.queue-card-footer-actions {
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 9px;
-  color: var(--text-muted);
-  text-align: center;
-  line-height: 1.2;
-  padding: 4px;
+  gap: 6px;
 }
-.timeline-body { flex: 1; min-width: 0; }
 
 /* ── Banner ── */
 .banner {
@@ -959,9 +937,6 @@ textarea { resize: vertical; font-family: inherit; }
   flex-direction: row-reverse;
 }
 [dir="rtl"] .queue-item-row {
-  flex-direction: row-reverse;
-}
-[dir="rtl"] .timeline-row {
   flex-direction: row-reverse;
 }
 [dir="rtl"] .modal-header {

@@ -304,8 +304,12 @@ function closePlanModal() {
   if (!state.planModalOpen) return;
   state.planModalOpen = false;
   closePlanBuilder();
-  document.getElementById("planModal")?.classList.add("hidden");
-  document.getElementById("planModal")?.setAttribute("aria-hidden", "true");
+  const modal = document.getElementById("planModal");
+  if (modal) {
+    if (modal.contains(document.activeElement)) document.activeElement.blur();
+    modal.classList.add("hidden");
+    modal.setAttribute("aria-hidden", "true");
+  }
   document.body.classList.remove("modal-open");
   renderPlans();
 }

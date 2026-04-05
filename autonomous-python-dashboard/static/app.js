@@ -54,6 +54,11 @@ function bindEvents() {
       e.preventDefault();
       closePlanModal();
     }
+    if ((e.ctrlKey || e.metaKey) && e.key === "s") {
+      e.preventDefault();
+      if (state.activePage === "plans" && state.planModalOpen && state.currentPlan) saveCurrentPlan();
+      else if (state.activePage === "persona") saveContext();
+    }
   });
   document.getElementById("reloadContextButton")?.addEventListener("click", loadContext);
   document.getElementById("saveContextButton")?.addEventListener("click", saveContext);
@@ -61,10 +66,37 @@ function bindEvents() {
   document.getElementById("refreshQueueButton")?.addEventListener("click", loadQueuePage);
   document.getElementById("refreshPublishingButton")?.addEventListener("click", loadPublishingPage);
   document.getElementById("refreshMonitorButton")?.addEventListener("click", loadMonitorPage);
+  document.getElementById("menuToggle")?.addEventListener("click", toggleMobileSidebar);
+  document.getElementById("sidebarBackdrop")?.addEventListener("click", closeMobileSidebar);
   document.addEventListener("submit", handleDynamicSubmit);
   document.addEventListener("click", handleDynamicClick);
   document.addEventListener("change", handlePlanItemPlatformChange);
   document.addEventListener("change", handlePlanItemFileChange);
+  document.addEventListener("dragover", (e) => {
+    const zone = e.target.closest("[data-drop-zone]");
+    if (zone) { e.preventDefault(); zone.classList.add("drag-over"); }
+  });
+  document.addEventListener("dragleave", (e) => {
+    const zone = e.target.closest("[data-drop-zone]");
+    if (zone) zone.classList.remove("drag-over");
+  });
+  document.addEventListener("drop", (e) => {
+    const zone = e.target.closest("[data-drop-zone]");
+    if (!zone) return;
+    e.preventDefault();
+    zone.classList.remove("drag-over");
+    const file = e.dataTransfer?.files?.[0];
+    if (!file) return;
+    const itemId = zone.dataset.dropZone;
+    if (!itemId || !state.currentPlan) return;
+    const item = state.currentPlan.items?.find((i) => i.id === itemId);
+    if (!item) return;
+    setPendingPlanMedia(itemId, file);
+    if (file.type.startsWith("video/")) item.uploadedMediaType = "video";
+    else if (file.type.startsWith("image/")) item.uploadedMediaType = "photo";
+    if (item.status === "approved") item.status = "preparing";
+    renderPlans();
+  });
 }
 
 function revokePendingPlanMedia(itemId) {
@@ -119,7 +151,18 @@ async function initialize() {
   window.setInterval(refreshAll, 15000);
 }
 
+function toggleMobileSidebar() {
+  document.getElementById("sidebar")?.classList.toggle("open");
+  document.getElementById("sidebarBackdrop")?.classList.toggle("visible");
+}
+
+function closeMobileSidebar() {
+  document.getElementById("sidebar")?.classList.remove("open");
+  document.getElementById("sidebarBackdrop")?.classList.remove("visible");
+}
+
 function navigateTo(page) {
+  closeMobileSidebar();
   if (page !== "plans" && state.planModalOpen) closePlanModal();
   state.activePage = page;
   document.querySelectorAll(".page").forEach((p) => p.classList.remove("active"));
@@ -330,17 +373,24 @@ function renderSavedPlans() {
   if (!container) return;
   container.innerHTML = "";
   if (!state.plans.length) {
-    container.appendChild(emptyState("No saved plans yet."));
+    container.appendChild(emptyState("No saved plans yet.", "Create a content plan to schedule posts across your social channels.", "New plan", () => startNewPlan()));
     return;
   }
   state.plans.forEach((plan) => {
+    const items = plan.items || [];
+    const approved = items.filter((i) => i.status === "approved" || i.status === "posted").length;
+    const total = items.length;
+    const pct = total > 0 ? Math.round((approved / total) * 100) : 0;
+    const statusPillClass = plan.status === "closed" ? "status-canceled" : "status-approved";
+
     const cardNode = card(`
       <div class="saved-plan-row">
         ${savedPlanThumbHtml(plan)}
         <div class="saved-plan-body line-meta">
           <strong>${escapeHtml(plan.name)}</strong>
-          <span>${escapeHtml(plan.type)} · ${(plan.items || []).length} slots · ${escapeHtml(plan.status)}</span>
+          <span><span class="pill ${statusPillClass}">${escapeHtml(plan.status)}</span> ${escapeHtml(plan.type)} · ${total} slots</span>
           <span>${escapeHtml(plan.startDate || "Start date not set")}</span>
+          ${total > 0 ? `<div class="plan-progress"><div class="plan-progress-bar"><div class="plan-progress-fill" style="width:${pct}%"></div></div><span class="plan-progress-label">${approved}/${total} ready</span></div>` : ""}
         </div>
       </div>
       <div class="actions">
@@ -465,7 +515,8 @@ function renderPlanItemCard(item) {
               <div class="ai-text-block" style="margin:8px 4px 10px;border:none">${escapeHtml(item.generated_text)}</div>
             </details>
           ` : ""}
-          <p class="subtle plan-item-flow-hint">1) Choose file → preview updates · 2) Add tag(s) → shown here · 3) Approve uploads &amp; loads from server</p>
+          <p class="subtle plan-item-flow-hint">1) Drop or choose file → preview updates · 2) Add tag(s) · 3) Approve uploads to server</p>
+          <div class="drop-zone" data-drop-zone="${escapeAttr(item.id)}">Drop media file here or use the button below</div>
           <div class="plan-item-toolbar" data-plan-item-file="${escapeAttr(item.id)}">
             <input type="file" accept="${escapeAttr(acceptForMediaType(item.mediaType))}" aria-label="Choose media file" />
             <button type="button" class="button small ghost" data-add-tag="${escapeAttr(item.id)}">Add tag</button>
@@ -501,22 +552,56 @@ function renderStrategy() {
   if (!container || !state.context) return;
   const ctx = state.context;
   container.innerHTML = "";
+
   container.appendChild(card(`
     <div class="line-meta">
+      <div class="snapshot-section-label">Profile</div>
       <strong>${escapeHtml(ctx.name || "Inna")}</strong>
       <span>${escapeHtml(ctx.specialty || "")}</span>
       <span>${escapeHtml(ctx.location || "")}</span>
-      <span>${escapeHtml(ctx.targetAudience || "")}</span>
     </div>
   `));
+
+  if (ctx.targetAudience) {
+    container.appendChild(card(`
+      <div class="line-meta">
+        <div class="snapshot-section-label">Target Audience</div>
+        <span>${escapeHtml(ctx.targetAudience)}</span>
+      </div>
+    `));
+  }
+
   container.appendChild(card(`
     <div class="line-meta">
-      <strong>Voice</strong>
-      <span>${escapeHtml(ctx.voice?.tone || "")}</span>
-      <span>${escapeHtml(ctx.voice?.style || "")}</span>
+      <div class="snapshot-section-label">Voice</div>
+      ${ctx.voice?.tone ? `<span><strong>Tone:</strong> ${escapeHtml(ctx.voice.tone)}</span>` : ""}
+      ${ctx.voice?.style ? `<span><strong>Style:</strong> ${escapeHtml(ctx.voice.style)}</span>` : ""}
     </div>
   `));
-  container.appendChild(card(`<div class="subtle">"${escapeHtml(ctx.philosophy || "")}"</div>`));
+
+  const forbidden = ctx.voice?.forbiddenWords || [];
+  if (forbidden.length) {
+    container.appendChild(card(`
+      <div class="line-meta">
+        <div class="snapshot-section-label">Forbidden Words</div>
+        <div class="snapshot-tags">${forbidden.map((w) => `<span class="snapshot-tag">${escapeHtml(w)}</span>`).join("")}</div>
+      </div>
+    `));
+  }
+
+  if (ctx.philosophy) {
+    container.appendChild(card(`<div class="snapshot-quote">${escapeHtml(ctx.philosophy)}</div>`));
+  }
+
+  const quotes = ctx.quotes || [];
+  if (quotes.length) {
+    container.appendChild(card(`
+      <div class="line-meta">
+        <div class="snapshot-section-label">Quotes</div>
+        ${quotes.map((q) => `<div class="snapshot-quote">${escapeHtml(q)}</div>`).join("")}
+      </div>
+    `));
+  }
 }
 
 function openPlanBuilder() {
@@ -625,27 +710,35 @@ async function saveCurrentPlan() {
 async function saveContext() {
   const form = document.getElementById("contextForm");
   if (!form) return;
-  const payload = {
-    name: form.elements.name?.value || "",
-    specialty: form.elements.specialty?.value || "",
-    location: form.elements.location?.value || "",
-    philosophy: form.elements.philosophy?.value || "",
-    targetAudience: form.elements.targetAudience?.value || "",
-    voice: {
-      tone: form.elements.voiceTone?.value || "",
-      style: form.elements.voiceStyle?.value || "",
-      forbiddenWords: parseLines(form.elements.forbiddenWords?.value || ""),
-    },
-    quotes: parseLines(form.elements.quotes?.value || ""),
-  };
-  state.context = await api("/api/inna-context", {
-    method: "PUT",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-  renderContext();
-  renderStrategy();
-  showToast("Context saved.");
+  const btn = document.getElementById("saveContextButton");
+  btnLoading(btn, true, "Saving\u2026");
+  try {
+    const payload = {
+      name: form.elements.name?.value || "",
+      specialty: form.elements.specialty?.value || "",
+      location: form.elements.location?.value || "",
+      philosophy: form.elements.philosophy?.value || "",
+      targetAudience: form.elements.targetAudience?.value || "",
+      voice: {
+        tone: form.elements.voiceTone?.value || "",
+        style: form.elements.voiceStyle?.value || "",
+        forbiddenWords: parseLines(form.elements.forbiddenWords?.value || ""),
+      },
+      quotes: parseLines(form.elements.quotes?.value || ""),
+    };
+    state.context = await api("/api/inna-context", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+    renderContext();
+    renderStrategy();
+    showToast("Context saved.");
+  } catch (error) {
+    showToast(error.message, true);
+  } finally {
+    btnLoading(btn, false);
+  }
 }
 
 function renderHelpDocs() {
@@ -667,12 +760,18 @@ function renderHelpDocs() {
   content.textContent = active?.content || active?.error || "No document selected.";
 }
 
+function metricColorClass(key, value) {
+  if (!value || value === 0) return "";
+  const map = { canceled: "metric-danger", failed: "metric-danger", waiting_media: "metric-warning", rethinking: "metric-warning", draft: "metric-purple", new: "metric-info", approved: "metric-success", published: "metric-success", posted: "metric-success" };
+  return map[key] || "";
+}
+
 function renderQueueCounts(counts) {
   const container = document.getElementById("queueCounts");
   if (!container) return;
   const keys = ["new", "waiting_media", "draft", "rethinking", "approved", "canceled", "total"];
   container.innerHTML = keys.map((k) => `
-    <div class="metric-card">
+    <div class="metric-card ${metricColorClass(k, counts[k])}">
       <span class="meta-label">${escapeHtml(statusLabels[k] || k)}</span>
       <strong>${escapeHtml(String(counts[k] ?? 0))}</strong>
     </div>
@@ -691,7 +790,7 @@ function renderActiveQueue(items) {
   const container = document.getElementById("activeQueue");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No active queue items.")); return; }
+  if (!items.length) { container.appendChild(emptyState("No active queue items.", "Approve plan items to add them to the queue.")); return; }
   items.forEach((item) => container.appendChild(renderQueueItemCard(item)));
 }
 
@@ -699,7 +798,7 @@ function renderWaitingMedia(items) {
   const container = document.getElementById("waitingMediaList");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No items waiting for media.")); return; }
+  if (!items.length) { container.appendChild(emptyState("No items waiting for media.", "Items needing media will appear here after processing.")); return; }
   items.forEach((item) => {
     container.appendChild(card(`
       <div class="line-meta">
@@ -719,7 +818,7 @@ function renderDrafts(items) {
   const container = document.getElementById("draftList");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No drafts or rethinking items.")); return; }
+  if (!items.length) { container.appendChild(emptyState("No drafts or rethinking items.", "Process queue items to generate AI drafts for review.")); return; }
   items.forEach((item) => {
     const preview = item.media_url
       ? item.file_type === "video"
@@ -757,15 +856,15 @@ function renderPublishingOverview(payload) {
   const container = document.getElementById("publishingOverview");
   if (!container) return;
   const entries = [
-    ["Scheduled", payload.scheduled || 0],
-    ["Published", payload.published || 0],
-    ["Failed", payload.failed || 0],
-    ["Approved Items", payload.approved_items || 0],
-    ["Waiting For Schedule", payload.waiting_for_schedule || 0],
-    ["Upcoming", (payload.upcoming || []).length],
+    ["Scheduled", "scheduled", payload.scheduled || 0],
+    ["Published", "published", payload.published || 0],
+    ["Failed", "failed", payload.failed || 0],
+    ["Approved Items", "approved", payload.approved_items || 0],
+    ["Waiting For Schedule", "waiting_media", payload.waiting_for_schedule || 0],
+    ["Upcoming", "new", (payload.upcoming || []).length],
   ];
-  container.innerHTML = entries.map(([label, value]) => `
-    <div class="metric-card">
+  container.innerHTML = entries.map(([label, key, value]) => `
+    <div class="metric-card ${metricColorClass(key, value)}">
       <span class="meta-label">${escapeHtml(label)}</span>
       <strong>${escapeHtml(String(value))}</strong>
     </div>
@@ -776,7 +875,7 @@ function renderTimeline(items) {
   const container = document.getElementById("timelineList");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No scheduled or published items.")); return; }
+  if (!items.length) { container.appendChild(emptyState("No scheduled or published items.", "Approve drafts with a publish date to see them here.")); return; }
   items.forEach((item) => {
     const jobs = (item.publish_jobs || []).map((job) => {
       const retry = job.status === "failed"
@@ -785,13 +884,24 @@ function renderTimeline(items) {
       return `<div class="pill-row"><span class="pill">${escapeHtml(job.target || "?")}: ${escapeHtml(job.status || "?")}</span>${retry}</div>`;
     }).join("");
 
+    const thumb = item.media_url
+      ? (item.file_type === "video"
+        ? `<div class="timeline-thumb"><video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video></div>`
+        : `<div class="timeline-thumb"><img src="${escapeAttr(item.media_url)}" alt="" loading="lazy" /></div>`)
+      : `<div class="timeline-thumb timeline-thumb-empty">No media</div>`;
+
     container.appendChild(card(`
-      <div class="line-meta">
-        <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-        <span>${escapeHtml(formatDate(item.publish_at))} · ${escapeHtml(item.status)}</span>
-        <span>${escapeHtml(item.caption || "")}</span>
+      <div class="timeline-row">
+        ${thumb}
+        <div class="timeline-body">
+          <div class="line-meta">
+            <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
+            <span>${escapeHtml(formatDate(item.publish_at))} · ${escapeHtml(item.status)}</span>
+            <span>${escapeHtml(item.caption || "")}</span>
+          </div>
+          ${jobs || '<div class="subtle">No publish jobs.</div>'}
+        </div>
       </div>
-      ${jobs || '<div class="subtle">No publish jobs.</div>'}
     `));
   });
 }
@@ -834,7 +944,7 @@ function renderMonitorQueueCounts(counts) {
   if (!container) return;
   const keys = ["new", "waiting_media", "draft", "rethinking", "approved", "canceled", "total"];
   container.innerHTML = keys.map((k) => `
-    <div class="metric-card">
+    <div class="metric-card ${metricColorClass(k, counts[k])}">
       <span class="meta-label">${escapeHtml(statusLabels[k] || k)}</span>
       <strong>${escapeHtml(String(counts[k] ?? 0))}</strong>
     </div>
@@ -845,14 +955,14 @@ function renderMonitorPublishing(pub) {
   const container = document.getElementById("monitorPublishing");
   if (!container) return;
   const entries = [
-    ["Scheduled", pub.scheduled || 0],
-    ["Published", pub.published || 0],
-    ["Failed", pub.failed || 0],
-    ["Approved", pub.approved_items || 0],
-    ["Waiting", pub.waiting_for_schedule || 0],
+    ["Scheduled", "scheduled", pub.scheduled || 0],
+    ["Published", "published", pub.published || 0],
+    ["Failed", "failed", pub.failed || 0],
+    ["Approved", "approved", pub.approved_items || 0],
+    ["Waiting", "waiting_media", pub.waiting_for_schedule || 0],
   ];
-  container.innerHTML = entries.map(([label, value]) => `
-    <div class="metric-card">
+  container.innerHTML = entries.map(([label, key, value]) => `
+    <div class="metric-card ${metricColorClass(key, value)}">
       <span class="meta-label">${escapeHtml(label)}</span>
       <strong>${escapeHtml(String(value))}</strong>
     </div>
@@ -911,6 +1021,8 @@ function renderOpenPlans(items) {
 }
 
 async function handleProcess() {
+  const btn = document.getElementById("processButton");
+  btnLoading(btn, true, "Processing\u2026");
   try {
     const payload = await api("/api/process", {
       method: "POST",
@@ -931,10 +1043,14 @@ async function handleProcess() {
     await loadQueuePage();
   } catch (error) {
     showToast(error.message, true);
+  } finally {
+    btnLoading(btn, false);
   }
 }
 
 async function handlePublishNow() {
+  const btn = document.getElementById("publishNowButton");
+  btnLoading(btn, true, "Publishing\u2026");
   try {
     const payload = await api("/api/publish-now", { method: "POST" });
     const resultDiv = document.getElementById("publishResult");
@@ -951,6 +1067,8 @@ async function handlePublishNow() {
     await loadPublishingPage();
   } catch (error) {
     showToast(error.message, true);
+  } finally {
+    btnLoading(btn, false);
   }
 }
 
@@ -1076,12 +1194,31 @@ async function handleDynamicClick(event) {
 
   if (addTagBtn) {
     const itemId = addTagBtn.dataset.addTag;
-    const tag = window.prompt("Enter tag:");
-    if (!tag?.trim()) return;
-    if (!state.currentPlan) return;
-    const item = state.currentPlan.items?.find((i) => i.id === itemId);
-    if (item) { if (!item.tags) item.tags = []; item.tags.push(tag.trim()); }
-    renderPlans();
+    const existing = addTagBtn.parentElement?.querySelector(".inline-tag-input");
+    if (existing) { existing.querySelector("input")?.focus(); return; }
+    const wrapper = document.createElement("span");
+    wrapper.className = "inline-tag-input";
+    const inp = document.createElement("input");
+    inp.type = "text";
+    inp.placeholder = "tag name";
+    inp.setAttribute("aria-label", "Tag name");
+    const confirmBtn = document.createElement("button");
+    confirmBtn.type = "button";
+    confirmBtn.className = "button small primary";
+    confirmBtn.textContent = "Add";
+    const commitTag = () => {
+      const val = inp.value.trim();
+      if (!val || !state.currentPlan) return;
+      const item = state.currentPlan.items?.find((i) => i.id === itemId);
+      if (item) { if (!item.tags) item.tags = []; item.tags.push(val); }
+      renderPlans();
+    };
+    confirmBtn.addEventListener("click", commitTag);
+    inp.addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); commitTag(); } if (e.key === "Escape") { wrapper.remove(); } });
+    wrapper.appendChild(inp);
+    wrapper.appendChild(confirmBtn);
+    addTagBtn.parentElement?.appendChild(wrapper);
+    inp.focus();
     return;
   }
 
@@ -1282,21 +1419,52 @@ function card(inner, skipWrapper = false) {
   return node;
 }
 
-function emptyState(message) {
+function emptyState(message, hint, actionLabel, actionFn) {
   const node = document.createElement("div");
   node.className = "empty";
   node.textContent = message;
+  if (hint) {
+    const hintEl = document.createElement("span");
+    hintEl.className = "empty-hint";
+    hintEl.textContent = hint;
+    node.appendChild(hintEl);
+  }
+  if (actionLabel && actionFn) {
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "button small primary";
+    btn.textContent = actionLabel;
+    btn.addEventListener("click", actionFn);
+    node.appendChild(btn);
+  }
   return node;
+}
+
+function btnLoading(btn, loading, label) {
+  if (!btn) return;
+  if (loading) {
+    btn._origLabel = btn._origLabel || btn.textContent;
+    btn.disabled = true;
+    btn.innerHTML = `<span class="btn-spinner"></span>${escapeHtml(label || btn._origLabel)}`;
+  } else {
+    btn.disabled = false;
+    btn.textContent = btn._origLabel || label || "";
+    delete btn._origLabel;
+  }
 }
 
 function showToast(message, isError = false) {
   const toast = document.getElementById("toast");
   if (!toast) return;
-  toast.classList.remove("hidden");
+  toast.classList.remove("hidden", "hiding");
   toast.style.background = isError ? "#b91c1c" : "#0f172a";
-  toast.textContent = message;
+  const icon = isError ? "\u2716" : "\u2714";
+  toast.innerHTML = `<span class="toast-icon">${icon}</span>${escapeHtml(message)}`;
   window.clearTimeout(showToast.timer);
-  showToast.timer = window.setTimeout(() => toast.classList.add("hidden"), 3500);
+  showToast.timer = window.setTimeout(() => {
+    toast.classList.add("hiding");
+    window.setTimeout(() => { toast.classList.add("hidden"); toast.classList.remove("hiding"); }, 200);
+  }, 3500);
 }
 
 function formatDate(value) {

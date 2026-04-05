@@ -250,12 +250,16 @@ async function loadCommandReference() {
   if (!container) return;
   container.innerHTML = "";
   (payload.commands || []).forEach((entry) => {
-    container.appendChild(card(`
-      <div class="line-meta">
-        <strong>${escapeHtml(entry.command)}</strong>
-        <span>${escapeHtml(entry.description)}</span>
+    const node = document.createElement("div");
+    node.className = "help-card";
+    node.innerHTML = `
+      <div class="help-card-icon">${escapeHtml(entry.command.slice(0, 1))}</div>
+      <div class="help-card-body">
+        <strong class="help-card-title">${escapeHtml(entry.command)}</strong>
+        <p class="help-card-desc">${escapeHtml(entry.description)}</p>
       </div>
-    `));
+    `;
+    container.appendChild(node);
   });
 }
 
@@ -772,7 +776,8 @@ function renderHelpDocs() {
     tabs.appendChild(btn);
   });
   const active = state.helpDocs.find((d) => d.id === state.activeHelpDocId) || null;
-  content.textContent = active?.content || active?.error || t("help.noDoc");
+  const text = active?.content || active?.error || t("help.noDoc");
+  content.innerHTML = `<pre class="help-content-pre">${escapeHtml(text)}</pre>`;
 }
 
 function metricColorClass(key, value) {

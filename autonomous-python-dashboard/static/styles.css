@@ -733,21 +733,60 @@ textarea { resize: vertical; font-family: inherit; }
 .tab-button.active { background: var(--accent); color: #fff; border-color: var(--accent); }
 .tab-button:hover:not(.active) { background: var(--bg); }
 
-/* ── Help content ── */
-.help-content {
-  background: var(--bg);
+/* ── Help Cards ── */
+.help-card {
+  background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  padding: 16px;
-  font-size: 12px;
-  line-height: 1.7;
-  white-space: pre-wrap;
-  overflow-x: auto;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.help-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.help-card-icon {
+  flex: 0 0 36px;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  background: var(--accent-light);
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.help-card-body { flex: 1; min-width: 0; }
+.help-card-title { font-size: 14px; font-weight: 600; display: block; margin-bottom: 4px; }
+.help-card-desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; margin: 0; }
+
+/* ── Help content ── */
+.help-content-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px 24px;
   max-height: 500px;
   overflow-y: auto;
+}
+.help-content-pre {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
   font-family: ui-monospace, monospace;
   color: var(--text);
 }
+
+[dir="rtl"] .help-card { flex-direction: row-reverse; }
+[dir="rtl"] .help-card-body { text-align: right; }
 
 /* ── Toast ── */
 @keyframes toast-in { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }

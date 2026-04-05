@@ -16,52 +16,58 @@
             <span class="logo-icon">&#9670;</span>
             <div>
               <strong>{{ app_name }}</strong>
-              <span>Social Media Agent</span>
+              <span data-i18n="app.subtitle">Social Media Agent</span>
             </div>
           </div>
         </div>
 
         <div class="sidebar-nav">
           <button class="nav-item" data-page="plans">
-            <span class="nav-icon">&#9776;</span> Plans
+            <span class="nav-icon">&#9776;</span> <span data-i18n="nav.plans">Plans</span>
           </button>
           <button class="nav-item" data-page="queue">
-            <span class="nav-icon">&#9881;</span> Queue
+            <span class="nav-icon">&#9881;</span> <span data-i18n="nav.queue">Queue</span>
           </button>
           <button class="nav-item" data-page="publishing">
-            <span class="nav-icon">&#9650;</span> Publishing
+            <span class="nav-icon">&#9650;</span> <span data-i18n="nav.publishing">Publishing</span>
           </button>
           <button class="nav-item" data-page="persona">
-            <span class="nav-icon">&#9733;</span> Persona
+            <span class="nav-icon">&#9733;</span> <span data-i18n="nav.persona">Persona</span>
           </button>
           <button class="nav-item" data-page="help">
-            <span class="nav-icon">&#9432;</span> Help
+            <span class="nav-icon">&#9432;</span> <span data-i18n="nav.help">Help</span>
           </button>
           <button class="nav-item" data-page="monitor">
-            <span class="nav-icon">&#9673;</span> Monitor
+            <span class="nav-icon">&#9673;</span> <span data-i18n="nav.monitor">Monitor</span>
           </button>
         </div>
 
         <div class="sidebar-footer">
           <div class="sidebar-meta">
-            <span>{{ batch_size }} items/batch</span>
+            <span data-i18n="sidebar.itemsBatch" data-i18n-vars='{"n":"{{ batch_size }}"}'>{{ batch_size }} items/batch</span>
             <span class="muted">{{ data_root }}</span>
           </div>
         </div>
       </nav>
 
       <div id="sidebarBackdrop" class="sidebar-backdrop"></div>
-      <button id="menuToggle" class="menu-toggle" type="button" aria-label="Toggle menu">&#9776;</button>
+      <button id="menuToggle" class="menu-toggle" type="button" aria-label="Toggle menu" data-i18n-aria="menuToggle">&#9776;</button>
+      <div class="lang-switch" id="langSwitch">
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+        <button type="button" class="lang-btn" data-lang="uk">UK</button>
+        <button type="button" class="lang-btn" data-lang="he">HE</button>
+        <button type="button" class="lang-btn" data-lang="ru">RU</button>
+      </div>
       <main id="main-content" class="main-content">
 
         <div id="page-plans" class="page active">
           <div class="page-header">
             <div>
-              <p class="eyebrow">Content</p>
-              <h2>Plans</h2>
+              <p class="eyebrow" data-i18n="plans.eyebrow">Content</p>
+              <h2 data-i18n="plans.title">Plans</h2>
             </div>
             <div class="actions">
-              <button id="newPlanButton" class="button primary" type="button">New plan</button>
+              <button id="newPlanButton" class="button primary" type="button" data-i18n="plans.newPlan">New plan</button>
             </div>
           </div>
 
@@ -69,8 +75,8 @@
 
           <div class="plan-list-page">
             <div class="panel-header compact">
-              <h3>Your plans</h3>
-              <span class="muted">Open a plan in a window to edit</span>
+              <h3 data-i18n="plans.yourPlans">Your plans</h3>
+              <span class="muted" data-i18n="plans.yourPlansHint">Open a plan in a window to edit</span>
             </div>
             <div id="savedPlansList" class="stack"></div>
           </div>
@@ -79,35 +85,35 @@
         <div id="page-queue" class="page">
           <div class="page-header">
             <div>
-              <p class="eyebrow">Queue</p>
-              <h2>Queue &amp; Processing</h2>
+              <p class="eyebrow" data-i18n="queue.eyebrow">Queue</p>
+              <h2 data-i18n="queue.title">Queue &amp; Processing</h2>
             </div>
             <div class="actions">
-              <button id="processButton" class="button primary">Process New Items</button>
-              <button id="refreshQueueButton" class="button secondary">Refresh</button>
+              <button id="processButton" class="button primary" data-i18n="queue.process">Process New Items</button>
+              <button id="refreshQueueButton" class="button secondary" data-i18n="queue.refresh">Refresh</button>
             </div>
           </div>
           <div id="processResult" class="stack"></div>
 
           <div class="panel-header compact">
-            <h3>Queue Counts</h3>
+            <h3 data-i18n="queue.counts">Queue Counts</h3>
           </div>
           <div id="queueCounts" class="metric-grid"></div>
 
           <div class="panel-header compact">
-            <h3>Active Queue Items</h3>
-            <span class="muted">new, waiting_media, draft, rethinking</span>
+            <h3 data-i18n="queue.activeItems">Active Queue Items</h3>
+            <span class="muted" data-i18n="queue.activeHint">new, waiting_media, draft, rethinking</span>
           </div>
           <div id="activeQueue" class="stack"></div>
 
           <div class="panel-header compact">
-            <h3>Drafts &amp; Rethinking</h3>
+            <h3 data-i18n="queue.drafts">Drafts &amp; Rethinking</h3>
           </div>
           <div id="draftList" class="stack"></div>
 
           <div class="panel-header compact">
-            <h3>Waiting For Media</h3>
-            <span class="muted">Attach files to plan items awaiting media</span>
+            <h3 data-i18n="queue.waitingMedia">Waiting For Media</h3>
+            <span class="muted" data-i18n="queue.waitingMediaHint">Attach files to plan items awaiting media</span>
           </div>
           <div id="waitingMediaList" class="stack"></div>
         </div>
@@ -115,23 +121,23 @@
         <div id="page-publishing" class="page">
           <div class="page-header">
             <div>
-              <p class="eyebrow">Publishing</p>
-              <h2>Publishing Overview</h2>
+              <p class="eyebrow" data-i18n="pub.eyebrow">Publishing</p>
+              <h2 data-i18n="pub.title">Publishing Overview</h2>
             </div>
             <div class="actions">
-              <button id="publishNowButton" class="button primary">Publish Due Items</button>
-              <button id="refreshPublishingButton" class="button secondary">Refresh</button>
+              <button id="publishNowButton" class="button primary" data-i18n="pub.publishDue">Publish Due Items</button>
+              <button id="refreshPublishingButton" class="button secondary" data-i18n="pub.refresh">Refresh</button>
             </div>
           </div>
           <div id="publishResult" class="stack"></div>
 
           <div class="panel-header compact">
-            <h3>Publishing Metrics</h3>
+            <h3 data-i18n="pub.metrics">Publishing Metrics</h3>
           </div>
           <div id="publishingOverview" class="metric-grid"></div>
 
           <div class="panel-header compact">
-            <h3>Upcoming &amp; Past Publications</h3>
+            <h3 data-i18n="pub.timeline">Upcoming &amp; Past Publications</h3>
           </div>
           <div id="timelineList" class="stack"></div>
         </div>
@@ -139,32 +145,32 @@
         <div id="page-persona" class="page">
           <div class="page-header">
             <div>
-              <p class="eyebrow">Context</p>
-              <h2>Persona Editor</h2>
+              <p class="eyebrow" data-i18n="persona.eyebrow">Context</p>
+              <h2 data-i18n="persona.title">Persona Editor</h2>
             </div>
             <div class="actions">
-              <button id="reloadContextButton" class="button secondary">Reload</button>
-              <button id="saveContextButton" class="button primary">Save Context</button>
+              <button id="reloadContextButton" class="button secondary" data-i18n="persona.reload">Reload</button>
+              <button id="saveContextButton" class="button primary" data-i18n="persona.save">Save Context</button>
             </div>
           </div>
 
           <div class="two-column-grid">
             <div>
               <form id="contextForm" class="stack">
-                <label><span>Name</span><input name="name" type="text" /></label>
-                <label><span>Specialty</span><input name="specialty" type="text" /></label>
-                <label><span>Location</span><input name="location" type="text" /></label>
-                <label><span>Philosophy</span><textarea name="philosophy" rows="3"></textarea></label>
-                <label><span>Target Audience</span><textarea name="targetAudience" rows="2"></textarea></label>
-                <label><span>Voice Tone</span><textarea name="voiceTone" rows="2"></textarea></label>
-                <label><span>Voice Style</span><textarea name="voiceStyle" rows="2"></textarea></label>
-                <label><span>Forbidden Words (one per line)</span><textarea name="forbiddenWords" rows="4"></textarea></label>
-                <label><span>Quotes (one per line)</span><textarea name="quotes" rows="5"></textarea></label>
+                <label><span data-i18n="persona.name">Name</span><input name="name" type="text" /></label>
+                <label><span data-i18n="persona.specialty">Specialty</span><input name="specialty" type="text" /></label>
+                <label><span data-i18n="persona.location">Location</span><input name="location" type="text" /></label>
+                <label><span data-i18n="persona.philosophy">Philosophy</span><textarea name="philosophy" rows="3"></textarea></label>
+                <label><span data-i18n="persona.targetAudience">Target Audience</span><textarea name="targetAudience" rows="2"></textarea></label>
+                <label><span data-i18n="persona.voiceTone">Voice Tone</span><textarea name="voiceTone" rows="2"></textarea></label>
+                <label><span data-i18n="persona.voiceStyle">Voice Style</span><textarea name="voiceStyle" rows="2"></textarea></label>
+                <label><span data-i18n="persona.forbiddenWords">Forbidden Words (one per line)</span><textarea name="forbiddenWords" rows="4"></textarea></label>
+                <label><span data-i18n="persona.quotes">Quotes (one per line)</span><textarea name="quotes" rows="5"></textarea></label>
               </form>
             </div>
             <div>
               <div class="panel-header compact">
-                <h3>Business Snapshot</h3>
+                <h3 data-i18n="persona.snapshot">Business Snapshot</h3>
               </div>
               <div id="strategySummary" class="stack"></div>
             </div>
@@ -174,18 +180,18 @@
         <div id="page-help" class="page">
           <div class="page-header">
             <div>
-              <p class="eyebrow">Help</p>
-              <h2>Documentation</h2>
+              <p class="eyebrow" data-i18n="help.eyebrow">Help</p>
+              <h2 data-i18n="help.title">Documentation</h2>
             </div>
           </div>
 
           <div class="panel-header compact">
-            <h3>Bot Commands</h3>
+            <h3 data-i18n="help.botCommands">Bot Commands</h3>
           </div>
           <div id="commandReference" class="stack"></div>
 
           <div class="panel-header compact">
-            <h3>Workspace Docs</h3>
+            <h3 data-i18n="help.workspaceDocs">Workspace Docs</h3>
           </div>
           <div id="helpDocTabs" class="tab-list"></div>
           <pre id="helpDocContent" class="help-content"></pre>
@@ -194,25 +200,25 @@
         <div id="page-monitor" class="page">
           <div class="page-header">
             <div>
-              <p class="eyebrow">Monitor</p>
-              <h2>Dashboard Monitor</h2>
+              <p class="eyebrow" data-i18n="monitor.eyebrow">Monitor</p>
+              <h2 data-i18n="monitor.title">Dashboard Monitor</h2>
             </div>
-            <button id="refreshMonitorButton" class="button secondary">Refresh</button>
+            <button id="refreshMonitorButton" class="button secondary" data-i18n="monitor.refresh">Refresh</button>
           </div>
 
-          <div class="panel-header compact"><h3>Queue Health</h3></div>
+          <div class="panel-header compact"><h3 data-i18n="monitor.queueHealth">Queue Health</h3></div>
           <div id="monitorQueueCounts" class="metric-grid"></div>
 
-          <div class="panel-header compact"><h3>Publishing Summary</h3></div>
+          <div class="panel-header compact"><h3 data-i18n="monitor.pubSummary">Publishing Summary</h3></div>
           <div id="monitorPublishing" class="metric-grid"></div>
 
-          <div class="panel-header compact"><h3>Recent Queue Items</h3></div>
+          <div class="panel-header compact"><h3 data-i18n="monitor.recentItems">Recent Queue Items</h3></div>
           <div id="recentItems" class="stack"></div>
 
-          <div class="panel-header compact"><h3>Failed &amp; Canceled Items</h3></div>
+          <div class="panel-header compact"><h3 data-i18n="monitor.failedItems">Failed &amp; Canceled Items</h3></div>
           <div id="failedItems" class="stack"></div>
 
-          <div class="panel-header compact"><h3>Open Plans</h3></div>
+          <div class="panel-header compact"><h3 data-i18n="monitor.openPlans">Open Plans</h3></div>
           <div id="openPlans" class="stack"></div>
         </div>
 
@@ -223,41 +229,41 @@
       <div class="modal-backdrop" data-close-plan-modal></div>
       <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="planModalTitle">
         <div class="modal-header">
-          <h3 id="planModalTitle">Plan</h3>
+          <h3 id="planModalTitle" data-i18n="modal.plan">Plan</h3>
           <div class="modal-header-actions">
-            <button type="button" id="modalSavePlanButton" class="button secondary">Save</button>
-            <button type="button" class="button ghost" data-close-plan-modal>Close</button>
+            <button type="button" id="modalSavePlanButton" class="button secondary" data-i18n="btn.save">Save</button>
+            <button type="button" class="button ghost" data-close-plan-modal data-i18n="btn.close">Close</button>
           </div>
         </div>
         <div class="modal-body">
           <div id="planBuilder" class="form-card hidden">
             <label>
-              <span>Plan Name</span>
-              <input id="planNameInput" type="text" placeholder="Week Plan" />
+              <span data-i18n="modal.planName">Plan Name</span>
+              <input id="planNameInput" type="text" data-i18n-placeholder="modal.planNamePlaceholder" placeholder="Week Plan" />
             </label>
             <div class="two-column">
               <label>
-                <span>Plan Type</span>
+                <span data-i18n="modal.planType">Plan Type</span>
                 <select id="planTypeInput">
-                  <option value="week">week</option>
-                  <option value="month">month</option>
-                  <option value="quarter">quarter</option>
+                  <option value="week" data-i18n="modal.typeWeek">week</option>
+                  <option value="month" data-i18n="modal.typeMonth">month</option>
+                  <option value="quarter" data-i18n="modal.typeQuarter">quarter</option>
                 </select>
               </label>
               <label>
-                <span>Start Date</span>
+                <span data-i18n="modal.startDate">Start Date</span>
                 <input id="planStartDateInput" type="date" />
               </label>
             </div>
-            <p class="muted plan-builder-hint">Add one row per post slot (day + format). You can change platforms later on each item.</p>
+            <p class="muted plan-builder-hint" data-i18n="modal.builderHint">Add one row per post slot (day + format). You can change platforms later on each item.</p>
             <div class="panel-header compact">
-              <h3>Slots</h3>
-              <button id="addRequirementButton" class="button small ghost" type="button">Add row</button>
+              <h3 data-i18n="modal.slots">Slots</h3>
+              <button id="addRequirementButton" class="button small ghost" type="button" data-i18n="modal.addRow">Add row</button>
             </div>
             <div id="requirementsList" class="stack"></div>
             <div class="actions">
-              <button id="generatePlanButton" class="button primary" type="button">Create plan</button>
-              <button id="cancelPlanBuilderButton" class="button ghost" type="button">Cancel</button>
+              <button id="generatePlanButton" class="button primary" type="button" data-i18n="modal.createPlan">Create plan</button>
+              <button id="cancelPlanBuilderButton" class="button ghost" type="button" data-i18n="btn.cancel">Cancel</button>
             </div>
           </div>
           <div id="currentPlanView" class="stack"></div>
@@ -267,6 +273,7 @@
 
     <div id="toast" class="toast hidden"></div>
 
+    <script src="/static/i18n.js" defer></script>
     <script src="/static/app.js" defer></script>
   </body>
 </html>

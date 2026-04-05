@@ -1,5 +1,5 @@
 function uuid() {
-  if (typeof crypto !== "undefined" && crypto.randomUUID) return uuid();
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return crypto.randomUUID();
   return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
     const r = (Math.random() * 16) | 0;
     return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
@@ -19,15 +19,9 @@ const state = {
   planModalOpen: false,
 };
 
-const statusLabels = {
-  new: "New",
-  waiting_media: "Waiting Media",
-  draft: "Draft",
-  rethinking: "Rethinking",
-  approved: "Approved",
-  canceled: "Canceled",
-  posted: "Posted",
-};
+function statusLabel(key) {
+  return t("status." + key) || key;
+}
 
 const CONTENT_TYPES = [
   "Instagram Feed",
@@ -332,14 +326,14 @@ function updatePlanModalTitle() {
   const h = document.getElementById("planModalTitle");
   if (!h) return;
   if (state.planBuilderOpen && !state.currentPlan) {
-    h.textContent = "New plan";
+    h.textContent = t("modal.newPlan");
     return;
   }
   if (state.currentPlan?.name) {
     h.textContent = state.currentPlan.name;
     return;
   }
-  h.textContent = "Plan";
+  h.textContent = t("modal.plan");
 }
 
 function startNewPlan() {
@@ -373,7 +367,7 @@ function planItemIsVideo(item) {
 function savedPlanThumbHtml(plan) {
   const sample = firstPlanItemWithMedia(plan);
   if (!sample?.mediaUrl) {
-    return `<div class="saved-plan-thumb saved-plan-thumb-empty" aria-hidden="true">No preview</div>`;
+    return `<div class="saved-plan-thumb saved-plan-thumb-empty" aria-hidden="true">${escapeHtml(t("empty.noPreview"))}</div>`;
   }
   if (planItemIsVideo(sample)) {
     return `<div class="saved-plan-thumb"><video muted playsinline preload="metadata" src="${escapeAttr(sample.mediaUrl)}"></video></div>`;
@@ -386,7 +380,7 @@ function renderSavedPlans() {
   if (!container) return;
   container.innerHTML = "";
   if (!state.plans.length) {
-    container.appendChild(emptyState("No saved plans yet.", "Create a content plan to schedule posts across your social channels.", "New plan", () => startNewPlan()));
+    container.appendChild(emptyState(t("empty.noPlans"), t("empty.noPlansHint"), t("plans.newPlan"), () => startNewPlan()));
     return;
   }
   state.plans.forEach((plan) => {
@@ -401,15 +395,15 @@ function renderSavedPlans() {
         ${savedPlanThumbHtml(plan)}
         <div class="saved-plan-body line-meta">
           <strong>${escapeHtml(plan.name)}</strong>
-          <span><span class="pill ${statusPillClass}">${escapeHtml(plan.status)}</span> ${escapeHtml(plan.type)} · ${total} slots</span>
-          <span>${escapeHtml(plan.startDate || "Start date not set")}</span>
-          ${total > 0 ? `<div class="plan-progress"><div class="plan-progress-bar"><div class="plan-progress-fill" style="width:${pct}%"></div></div><span class="plan-progress-label">${approved}/${total} ready</span></div>` : ""}
+          <span><span class="pill ${statusPillClass}">${escapeHtml(t("status." + plan.status))}</span> ${escapeHtml(plan.type)} · ${t("planItem.nSlots", {n: total})}</span>
+          <span>${escapeHtml(plan.startDate || t("plans.noStartDate"))}</span>
+          ${total > 0 ? `<div class="plan-progress"><div class="plan-progress-bar"><div class="plan-progress-fill" style="width:${pct}%"></div></div><span class="plan-progress-label">${t("plans.ready", {approved, total})}</span></div>` : ""}
         </div>
       </div>
       <div class="actions">
-        <button class="button small ghost" data-open-plan="${escapeAttr(plan.id)}">Open</button>
-        <button class="button small ghost" data-plan-status="${escapeAttr(plan.id)}" data-next-status="${plan.status === "closed" ? "open" : "closed"}">${plan.status === "closed" ? "Reopen" : "Close"}</button>
-        <button class="button small danger" data-delete-plan="${escapeAttr(plan.id)}">Delete</button>
+        <button class="button small ghost" data-open-plan="${escapeAttr(plan.id)}">${escapeHtml(t("btn.open"))}</button>
+        <button class="button small ghost" data-plan-status="${escapeAttr(plan.id)}" data-next-status="${plan.status === "closed" ? "open" : "closed"}">${plan.status === "closed" ? escapeHtml(t("btn.reopen")) : escapeHtml(t("btn.close"))}</button>
+        <button class="button small danger" data-delete-plan="${escapeAttr(plan.id)}">${escapeHtml(t("btn.delete"))}</button>
       </div>
     `);
     cardNode.classList.add("saved-plan-card");
@@ -434,15 +428,15 @@ function renderCurrentPlan() {
   container.innerHTML = `
     <div class="item-card plan-editor-header">
       <div class="plan-editor-header-row">
-        <label><span>Plan name</span><input data-plan-field="name" type="text" value="${escapeAttr(p.name || "")}" placeholder="e.g. April week" /></label>
-        <label><span>Start date</span><input data-plan-field="startDate" type="date" value="${escapeAttr(p.startDate || "")}" /></label>
-        <span class="plan-item-count">${n} slot${n === 1 ? "" : "s"} · ${escapeHtml(p.type)} · ${escapeHtml(p.status)}</span>
+        <label><span>${escapeHtml(t("modal.planName"))}</span><input data-plan-field="name" type="text" value="${escapeAttr(p.name || "")}" placeholder="${escapeAttr(t("ph.planName"))}" /></label>
+        <label><span>${escapeHtml(t("modal.startDate"))}</span><input data-plan-field="startDate" type="date" value="${escapeAttr(p.startDate || "")}" /></label>
+        <span class="plan-item-count">${t("planItem.nSlots", {n})} · ${escapeHtml(p.type)} · ${escapeHtml(t("status." + p.status))}</span>
       </div>
     </div>
     ${itemCards}
     <div class="item-card">
       <div class="actions">
-        <button class="button small ghost" data-append-plan-item="true">Add slot</button>
+        <button class="button small ghost" data-append-plan-item="true">${escapeHtml(t("modal.addSlot"))}</button>
       </div>
     </div>
   `;
@@ -452,7 +446,7 @@ function planItemPreviewMediaHtml(item) {
   const pending = state.pendingPlanMedia[item.id];
   let badge = "";
   if (pending?.url) {
-    badge = `<span class="plan-preview-badge">Local only</span>`;
+    badge = `<span class="plan-preview-badge">${escapeHtml(t("planItem.localOnly"))}</span>`;
   }
   if (pending?.url) {
     const isVid = pending.file?.type?.startsWith("video/");
@@ -467,17 +461,17 @@ function planItemPreviewMediaHtml(item) {
     }
     return `${badge}<img src="${escapeAttr(item.mediaUrl)}" alt="Slot media" loading="lazy" />`;
   }
-  return `<div class="plan-thumb-placeholder"><strong>No media yet</strong>Choose a file, add tags, then approve.</div>`;
+  return `<div class="plan-thumb-placeholder"><strong>${escapeHtml(t("planItem.noMedia"))}</strong>${escapeHtml(t("planItem.noMediaHint"))}</div>`;
 }
 
 function planItemPreviewTagsHtml(item) {
   const tags = item.tags || [];
   const row = tags.length
     ? tags.map((tag) => `<span class="pill">#${escapeHtml(tag)}</span>`).join("")
-    : `<span class="tag-empty">No tags yet — use Add tag</span>`;
+    : `<span class="tag-empty">${escapeHtml(t("planItem.noTags"))}</span>`;
   return `
     <div class="plan-item-preview-tags">
-      Tags
+      ${escapeHtml(t("planItem.tags"))}
       <div class="pill-row">${row}</div>
     </div>
   `;
@@ -498,7 +492,7 @@ function renderPlanItemCard(item) {
   return `
     <div class="item-card plan-item-card">
       <div class="plan-item-layout">
-        <div class="plan-item-preview-column" aria-label="Slot preview">
+        <div class="plan-item-preview-column" aria-label="${escapeAttr(t("planItem.slotPreview"))}">
           <div class="plan-item-thumb-wrap">
             ${planItemPreviewMediaHtml(item)}
           </div>
@@ -506,38 +500,38 @@ function renderPlanItemCard(item) {
         </div>
         <div class="plan-item-main">
           <div class="plan-item-top">
-            <label><span>Day label</span><input data-item-field="${escapeAttr(item.id)}" data-field-name="day" type="text" value="${escapeAttr(item.day || "")}" placeholder="e.g. Monday" /></label>
-            <span class="plan-item-date">Goes live <strong>${escapeHtml(formatDate(item.publishAt))}</strong></span>
+            <label><span>${escapeHtml(t("planItem.dayLabel"))}</span><input data-item-field="${escapeAttr(item.id)}" data-field-name="day" type="text" value="${escapeAttr(item.day || "")}" placeholder="${escapeAttr(t("planItem.dayPlaceholder"))}" /></label>
+            <span class="plan-item-date">${escapeHtml(t("planItem.goesLive"))} <strong>${escapeHtml(formatDate(item.publishAt))}</strong></span>
           </div>
           <div class="plan-item-meta-row">
             ${renderStatusPill(normalizePlanStatus(item.status))}
             <label class="field-inline-expect">
-              <span>Expect</span>
+              <span>${escapeHtml(t("planItem.expect"))}</span>
               <select data-item-field="${escapeAttr(item.id)}" data-field-name="mediaType">
                 ${["photo", "video", "any"].map((o) => `<option value="${o}" ${item.mediaType === o ? "selected" : ""}>${o}</option>`).join("")}
               </select>
             </label>
           </div>
           <details class="plan-item-details">
-            <summary>Platforms (${platformCount} selected)</summary>
+            <summary>${escapeHtml(t("planItem.platforms", {n: platformCount}))}</summary>
             <div class="platform-checks">${renderPlatformCheckboxes(item)}</div>
           </details>
           ${hasGenerated ? `
             <details class="plan-item-details">
-              <summary>AI draft text</summary>
+              <summary>${escapeHtml(t("planItem.aiDraft"))}</summary>
               <div class="ai-text-block" style="margin:8px 4px 10px;border:none">${escapeHtml(item.generated_text)}</div>
             </details>
           ` : ""}
-          <p class="subtle plan-item-flow-hint">1) Drop or choose file → preview updates · 2) Add tag(s) · 3) Approve uploads to server</p>
-          <div class="drop-zone" data-drop-zone="${escapeAttr(item.id)}">Drop media file here or use the button below</div>
+          <p class="subtle plan-item-flow-hint">${escapeHtml(t("planItem.flowHint"))}</p>
+          <div class="drop-zone" data-drop-zone="${escapeAttr(item.id)}">${escapeHtml(t("planItem.dropZone"))}</div>
           <div class="plan-item-toolbar" data-plan-item-file="${escapeAttr(item.id)}">
-            <input type="file" accept="${escapeAttr(acceptForMediaType(item.mediaType))}" aria-label="Choose media file" />
-            <button type="button" class="button small ghost" data-add-tag="${escapeAttr(item.id)}">Add tag</button>
-            <button type="button" class="button small ghost" data-delete-media="${escapeAttr(item.id)}">Clear media</button>
+            <input type="file" accept="${escapeAttr(acceptForMediaType(item.mediaType))}" aria-label="${escapeAttr(t("planItem.chooseFile"))}" />
+            <button type="button" class="button small ghost" data-add-tag="${escapeAttr(item.id)}">${escapeHtml(t("planItem.addTag"))}</button>
+            <button type="button" class="button small ghost" data-delete-media="${escapeAttr(item.id)}">${escapeHtml(t("planItem.clearMedia"))}</button>
           </div>
           <div class="plan-item-toolbar">
-            <button type="button" class="button small primary" data-start-processing="${escapeAttr(item.id)}" title="Uploads if needed, saves the plan, syncs queue, reloads from server">Approve for queue</button>
-            <button type="button" class="button small danger" data-remove-plan-item="${escapeAttr(item.id)}">Remove slot</button>
+            <button type="button" class="button small primary" data-start-processing="${escapeAttr(item.id)}" title="${escapeAttr(t("planItem.approveTitle"))}">${escapeHtml(t("planItem.approveQueue"))}</button>
+            <button type="button" class="button small danger" data-remove-plan-item="${escapeAttr(item.id)}">${escapeHtml(t("planItem.removeSlot"))}</button>
           </div>
         </div>
       </div>
@@ -568,7 +562,7 @@ function renderStrategy() {
 
   container.appendChild(card(`
     <div class="line-meta">
-      <div class="snapshot-section-label">Profile</div>
+      <div class="snapshot-section-label">${escapeHtml(t("persona.snapshotProfile"))}</div>
       <strong>${escapeHtml(ctx.name || "Inna")}</strong>
       <span>${escapeHtml(ctx.specialty || "")}</span>
       <span>${escapeHtml(ctx.location || "")}</span>
@@ -578,7 +572,7 @@ function renderStrategy() {
   if (ctx.targetAudience) {
     container.appendChild(card(`
       <div class="line-meta">
-        <div class="snapshot-section-label">Target Audience</div>
+        <div class="snapshot-section-label">${escapeHtml(t("persona.snapshotAudience"))}</div>
         <span>${escapeHtml(ctx.targetAudience)}</span>
       </div>
     `));
@@ -586,9 +580,9 @@ function renderStrategy() {
 
   container.appendChild(card(`
     <div class="line-meta">
-      <div class="snapshot-section-label">Voice</div>
-      ${ctx.voice?.tone ? `<span><strong>Tone:</strong> ${escapeHtml(ctx.voice.tone)}</span>` : ""}
-      ${ctx.voice?.style ? `<span><strong>Style:</strong> ${escapeHtml(ctx.voice.style)}</span>` : ""}
+      <div class="snapshot-section-label">${escapeHtml(t("persona.snapshotVoice"))}</div>
+      ${ctx.voice?.tone ? `<span><strong>${escapeHtml(t("persona.snapshotTone"))}</strong> ${escapeHtml(ctx.voice.tone)}</span>` : ""}
+      ${ctx.voice?.style ? `<span><strong>${escapeHtml(t("persona.snapshotStyle"))}</strong> ${escapeHtml(ctx.voice.style)}</span>` : ""}
     </div>
   `));
 
@@ -596,7 +590,7 @@ function renderStrategy() {
   if (forbidden.length) {
     container.appendChild(card(`
       <div class="line-meta">
-        <div class="snapshot-section-label">Forbidden Words</div>
+        <div class="snapshot-section-label">${escapeHtml(t("persona.snapshotForbidden"))}</div>
         <div class="snapshot-tags">${forbidden.map((w) => `<span class="snapshot-tag">${escapeHtml(w)}</span>`).join("")}</div>
       </div>
     `));
@@ -610,7 +604,7 @@ function renderStrategy() {
   if (quotes.length) {
     container.appendChild(card(`
       <div class="line-meta">
-        <div class="snapshot-section-label">Quotes</div>
+        <div class="snapshot-section-label">${escapeHtml(t("persona.snapshotQuotes"))}</div>
         ${quotes.map((q) => `<div class="snapshot-quote">${escapeHtml(q)}</div>`).join("")}
       </div>
     `));
@@ -656,9 +650,9 @@ function renderRequirementRow(requirement) {
   node.className = "item-card requirement-row";
   node.innerHTML = `
     <div class="two-column">
-      <label><span>Day</span><input data-requirement="day" type="text" value="${escapeAttr(requirement.day || "")}" /></label>
+      <label><span>${escapeHtml(t("planItem.day"))}</span><input data-requirement="day" type="text" value="${escapeAttr(requirement.day || "")}" /></label>
       <label>
-        <span>Media Type</span>
+        <span>${escapeHtml(t("planItem.mediaType"))}</span>
         <select data-requirement="mediaType">
           ${["photo", "video", "any"].map((o) => `<option value="${o}" ${requirement.mediaType === o ? "selected" : ""}>${o}</option>`).join("")}
         </select>
@@ -669,7 +663,7 @@ function renderRequirementRow(requirement) {
         const sel = (requirement.contentTypes || []).includes(ct);
         return `<button type="button" class="button small ${sel ? "primary" : "ghost"}" data-requirement-toggle="${escapeAttr(ct)}">${escapeHtml(ct)}</button>`;
       }).join("")}
-      <button type="button" class="button small danger" data-remove-requirement="true">Remove</button>
+      <button type="button" class="button small danger" data-remove-requirement="true">${escapeHtml(t("planItem.remove"))}</button>
     </div>
   `;
   return node;
@@ -707,7 +701,7 @@ function generatePlanFromBuilder() {
 }
 
 async function saveCurrentPlan() {
-  if (!state.currentPlan) { showToast("No plan to save.", true); return; }
+  if (!state.currentPlan) { showToast(t("toast.noSave"), true); return; }
   const idx = state.plans.findIndex((p) => p.id === state.currentPlan.id);
   if (idx >= 0) state.plans[idx] = state.currentPlan;
   else state.plans.push(state.currentPlan);
@@ -716,7 +710,7 @@ async function saveCurrentPlan() {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(state.plans),
   });
-  showToast("Plan saved.");
+  showToast(t("toast.planSaved"));
   await loadPlans();
 }
 
@@ -724,7 +718,7 @@ async function saveContext() {
   const form = document.getElementById("contextForm");
   if (!form) return;
   const btn = document.getElementById("saveContextButton");
-  btnLoading(btn, true, "Saving\u2026");
+  btnLoading(btn, true, t("loading.saving"));
   try {
     const payload = {
       name: form.elements.name?.value || "",
@@ -746,7 +740,7 @@ async function saveContext() {
     });
     renderContext();
     renderStrategy();
-    showToast("Context saved.");
+    showToast(t("toast.contextSaved"));
   } catch (error) {
     showToast(error.message, true);
   } finally {
@@ -770,7 +764,7 @@ function renderHelpDocs() {
     tabs.appendChild(btn);
   });
   const active = state.helpDocs.find((d) => d.id === state.activeHelpDocId) || null;
-  content.textContent = active?.content || active?.error || "No document selected.";
+  content.textContent = active?.content || active?.error || t("help.noDoc");
 }
 
 function metricColorClass(key, value) {
@@ -785,7 +779,7 @@ function renderQueueCounts(counts) {
   const keys = ["new", "waiting_media", "draft", "rethinking", "approved", "canceled", "total"];
   container.innerHTML = keys.map((k) => `
     <div class="metric-card ${metricColorClass(k, counts[k])}">
-      <span class="meta-label">${escapeHtml(statusLabels[k] || k)}</span>
+      <span class="meta-label">${escapeHtml(statusLabel(k))}</span>
       <strong>${escapeHtml(String(counts[k] ?? 0))}</strong>
     </div>
   `).join("");
@@ -796,14 +790,14 @@ function renderPendingBanner(items) {
   if (!banner) return;
   if (!items.length) { banner.classList.add("hidden"); banner.textContent = ""; return; }
   banner.classList.remove("hidden");
-  banner.textContent = `${items.length} plan items pending processing or waiting for media.`;
+  banner.textContent = t("plans.pendingBanner", {n: items.length});
 }
 
 function renderActiveQueue(items) {
   const container = document.getElementById("activeQueue");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No active queue items.", "Approve plan items to add them to the queue.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noQueueItems"), t("empty.noQueueItemsHint"))); return; }
   items.forEach((item) => container.appendChild(renderQueueItemCard(item)));
 }
 
@@ -811,17 +805,17 @@ function renderWaitingMedia(items) {
   const container = document.getElementById("waitingMediaList");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No items waiting for media.", "Items needing media will appear here after processing.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noWaitingMedia"), t("empty.noWaitingMediaHint"))); return; }
   items.forEach((item) => {
     container.appendChild(card(`
       <div class="line-meta">
         <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-        <span>${escapeHtml(item.caption || "No caption")}</span>
+        <span>${escapeHtml(item.caption || t("empty.noCaption"))}</span>
       </div>
       <form class="actions" data-attach-form="${escapeHtml(item.id)}">
         <input type="file" name="file" accept="image/*,video/*" required />
-        <input type="text" name="caption" placeholder="Optional caption" />
-        <button type="submit" class="button small primary">Attach Media</button>
+        <input type="text" name="caption" placeholder="${escapeAttr(t("ph.optionalCaption"))}" />
+        <button type="submit" class="button small primary">${escapeHtml(t("btn.attachMedia"))}</button>
       </form>
     `));
   });
@@ -831,13 +825,13 @@ function renderDrafts(items) {
   const container = document.getElementById("draftList");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No drafts or rethinking items.", "Process queue items to generate AI drafts for review.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noDrafts"), t("empty.noDraftsHint"))); return; }
   items.forEach((item) => {
     const preview = item.media_url
       ? item.file_type === "video"
         ? `<video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video>`
         : `<img src="${escapeAttr(item.media_url)}" alt="Draft media" loading="lazy" />`
-      : `<span class="muted" style="font-size:9px">No media</span>`;
+      : `<span class="muted" style="font-size:9px">${escapeHtml(t("empty.noMedia"))}</span>`;
     container.appendChild(card(`
       <div class="item-card">
         <div class="queue-item-row">
@@ -845,24 +839,24 @@ function renderDrafts(items) {
           <div class="queue-item-body">
             <div class="line-meta">
               <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-              <span>${escapeHtml(item.caption || "No caption context")}</span>
+              <span>${escapeHtml(item.caption || t("empty.noCaptionContext"))}</span>
             </div>
             <div class="pill-row">
               ${renderStatusPill(item.status)}
-              ${(item.publish_targets || []).map((t) => `<span class="pill">${escapeHtml(t)}</span>`).join("")}
+              ${(item.publish_targets || []).map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
               ${(item.tags || []).map((tag) => `<span class="pill">#${escapeHtml(tag)}</span>`).join("")}
             </div>
           </div>
         </div>
-        ${item.generated_text ? `<div class="ai-text-block">${escapeHtml(item.generated_text)}</div>` : `<div class="subtle">No generated text yet.</div>`}
+        ${item.generated_text ? `<div class="ai-text-block">${escapeHtml(item.generated_text)}</div>` : `<div class="subtle">${escapeHtml(t("empty.noGeneratedText"))}</div>`}
         <div class="actions" style="margin-top:8px">
-          <button class="button small primary" data-action="approve" data-item-id="${escapeAttr(item.id)}">Approve</button>
-          <button class="button small ghost" data-toggle-rethink="${escapeAttr(item.id)}">Rethink</button>
-          <button class="button small danger" data-action="cancel" data-item-id="${escapeAttr(item.id)}">Cancel</button>
+          <button class="button small primary" data-action="approve" data-item-id="${escapeAttr(item.id)}">${escapeHtml(t("btn.approve"))}</button>
+          <button class="button small ghost" data-toggle-rethink="${escapeAttr(item.id)}">${escapeHtml(t("btn.rethink"))}</button>
+          <button class="button small danger" data-action="cancel" data-item-id="${escapeAttr(item.id)}">${escapeHtml(t("btn.cancel"))}</button>
         </div>
         <form class="stack hidden" data-rethink-form="${escapeAttr(item.id)}" style="margin-top:8px">
-          <textarea name="feedback" rows="3" placeholder="What should change?"></textarea>
-          <button type="submit" class="button small primary">Submit Feedback</button>
+          <textarea name="feedback" rows="3" placeholder="${escapeAttr(t("ph.whatShouldChange"))}"></textarea>
+          <button type="submit" class="button small primary">${escapeHtml(t("btn.submitFeedback"))}</button>
         </form>
       </div>
     `, true));
@@ -873,12 +867,12 @@ function renderPublishingOverview(payload) {
   const container = document.getElementById("publishingOverview");
   if (!container) return;
   const entries = [
-    ["Scheduled", "scheduled", payload.scheduled || 0],
-    ["Published", "published", payload.published || 0],
-    ["Failed", "failed", payload.failed || 0],
-    ["Approved Items", "approved", payload.approved_items || 0],
-    ["Waiting For Schedule", "waiting_media", payload.waiting_for_schedule || 0],
-    ["Upcoming", "new", (payload.upcoming || []).length],
+    [t("metric.scheduled"), "scheduled", payload.scheduled || 0],
+    [t("metric.published"), "published", payload.published || 0],
+    [t("metric.failed"), "failed", payload.failed || 0],
+    [t("metric.approvedItems"), "approved", payload.approved_items || 0],
+    [t("metric.waitingSchedule"), "waiting_media", payload.waiting_for_schedule || 0],
+    [t("metric.upcoming"), "new", (payload.upcoming || []).length],
   ];
   container.innerHTML = entries.map(([label, key, value]) => `
     <div class="metric-card ${metricColorClass(key, value)}">
@@ -892,11 +886,11 @@ function renderTimeline(items) {
   const container = document.getElementById("timelineList");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No scheduled or published items.", "Approve drafts with a publish date to see them here.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noTimeline"), t("empty.noTimelineHint"))); return; }
   items.forEach((item) => {
     const jobs = (item.publish_jobs || []).map((job) => {
       const retry = job.status === "failed"
-        ? `<button class="button small ghost" data-retry-target="${escapeAttr(item.id)}" data-target="${escapeAttr(job.target)}">Retry ${escapeHtml(job.target)}</button>`
+        ? `<button class="button small ghost" data-retry-target="${escapeAttr(item.id)}" data-target="${escapeAttr(job.target)}">${escapeHtml(t("btn.retry", {target: job.target}))}</button>`
         : "";
       return `<div class="pill-row"><span class="pill">${escapeHtml(job.target || "?")}: ${escapeHtml(job.status || "?")}</span>${retry}</div>`;
     }).join("");
@@ -905,7 +899,7 @@ function renderTimeline(items) {
       ? (item.file_type === "video"
         ? `<div class="timeline-thumb"><video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video></div>`
         : `<div class="timeline-thumb"><img src="${escapeAttr(item.media_url)}" alt="" loading="lazy" /></div>`)
-      : `<div class="timeline-thumb timeline-thumb-empty">No media</div>`;
+      : `<div class="timeline-thumb timeline-thumb-empty">${escapeHtml(t("empty.noMedia"))}</div>`;
 
     container.appendChild(card(`
       <div class="timeline-row">
@@ -916,7 +910,7 @@ function renderTimeline(items) {
             <span>${escapeHtml(formatDate(item.publish_at))} · ${escapeHtml(item.status)}</span>
             <span>${escapeHtml(item.caption || "")}</span>
           </div>
-          ${jobs || '<div class="subtle">No publish jobs.</div>'}
+          ${jobs || `<div class="subtle">${escapeHtml(t("empty.noPublishJobs"))}</div>`}
         </div>
       </div>
     `));
@@ -927,7 +921,7 @@ function renderCommandHistory(items) {
   const container = document.getElementById("commandHistory");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No recent commands.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noCommands"))); return; }
   items.forEach((item) => {
     container.appendChild(card(`
       <div class="line-meta">
@@ -943,7 +937,7 @@ function renderSevereErrors(items) {
   const container = document.getElementById("severeErrors");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No severe errors.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noErrors"))); return; }
   items.forEach((item) => {
     container.appendChild(card(`
       <div class="line-meta">
@@ -962,7 +956,7 @@ function renderMonitorQueueCounts(counts) {
   const keys = ["new", "waiting_media", "draft", "rethinking", "approved", "canceled", "total"];
   container.innerHTML = keys.map((k) => `
     <div class="metric-card ${metricColorClass(k, counts[k])}">
-      <span class="meta-label">${escapeHtml(statusLabels[k] || k)}</span>
+      <span class="meta-label">${escapeHtml(statusLabel(k))}</span>
       <strong>${escapeHtml(String(counts[k] ?? 0))}</strong>
     </div>
   `).join("");
@@ -972,11 +966,11 @@ function renderMonitorPublishing(pub) {
   const container = document.getElementById("monitorPublishing");
   if (!container) return;
   const entries = [
-    ["Scheduled", "scheduled", pub.scheduled || 0],
-    ["Published", "published", pub.published || 0],
-    ["Failed", "failed", pub.failed || 0],
-    ["Approved", "approved", pub.approved_items || 0],
-    ["Waiting", "waiting_media", pub.waiting_for_schedule || 0],
+    [t("metric.scheduled"), "scheduled", pub.scheduled || 0],
+    [t("metric.published"), "published", pub.published || 0],
+    [t("metric.failed"), "failed", pub.failed || 0],
+    [t("metric.approved"), "approved", pub.approved_items || 0],
+    [t("metric.waiting"), "waiting_media", pub.waiting_for_schedule || 0],
   ];
   container.innerHTML = entries.map(([label, key, value]) => `
     <div class="metric-card ${metricColorClass(key, value)}">
@@ -990,7 +984,7 @@ function renderRecentItems(items) {
   const container = document.getElementById("recentItems");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No recent queue items.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noRecentItems"))); return; }
   items.forEach((item) => {
     container.appendChild(card(`
       <div class="line-meta">
@@ -1009,7 +1003,7 @@ function renderFailedItems(items) {
   const container = document.getElementById("failedItems");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No failed or canceled items.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noFailedItems"))); return; }
   items.forEach((item) => {
     container.appendChild(card(`
       <div class="line-meta">
@@ -1026,7 +1020,7 @@ function renderOpenPlans(items) {
   const container = document.getElementById("openPlans");
   if (!container) return;
   container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState("No open plans.")); return; }
+  if (!items.length) { container.appendChild(emptyState(t("empty.noOpenPlans"))); return; }
   items.forEach((item) => {
     container.appendChild(card(`
       <div class="line-meta">
@@ -1039,7 +1033,7 @@ function renderOpenPlans(items) {
 
 async function handleProcess() {
   const btn = document.getElementById("processButton");
-  btnLoading(btn, true, "Processing\u2026");
+  btnLoading(btn, true, t("loading.processing"));
   try {
     const payload = await api("/api/process", {
       method: "POST",
@@ -1051,12 +1045,12 @@ async function handleProcess() {
       resultDiv.innerHTML = "";
       resultDiv.appendChild(card(`
         <div class="line-meta">
-          <strong>Processing complete</strong>
-          <span>Processed: ${payload.processed} · With media: ${payload.withMedia} · Waiting: ${payload.waitingForMedia}</span>
+          <strong>${escapeHtml(t("toast.processComplete"))}</strong>
+          <span>${escapeHtml(t("toast.processDetails", {processed: payload.processed, withMedia: payload.withMedia, waiting: payload.waitingForMedia}))}</span>
         </div>
       `));
     }
-    showToast("Queue processed.");
+    showToast(t("toast.processed"));
     await loadQueuePage();
   } catch (error) {
     showToast(error.message, true);
@@ -1067,7 +1061,7 @@ async function handleProcess() {
 
 async function handlePublishNow() {
   const btn = document.getElementById("publishNowButton");
-  btnLoading(btn, true, "Publishing\u2026");
+  btnLoading(btn, true, t("loading.publishing"));
   try {
     const payload = await api("/api/publish-now", { method: "POST" });
     const resultDiv = document.getElementById("publishResult");
@@ -1075,12 +1069,12 @@ async function handlePublishNow() {
       resultDiv.innerHTML = "";
       resultDiv.appendChild(card(`
         <div class="line-meta">
-          <strong>Publishing complete</strong>
-          <span>Published: ${payload.published} · Failed: ${payload.failed}</span>
+          <strong>${escapeHtml(t("toast.publishComplete"))}</strong>
+          <span>${escapeHtml(t("toast.publishDetails", {published: payload.published, failed: payload.failed}))}</span>
         </div>
       `));
     }
-    showToast("Publish-now complete.");
+    showToast(t("toast.publishComplete"));
     await loadPublishingPage();
   } catch (error) {
     showToast(error.message, true);
@@ -1098,7 +1092,7 @@ async function handleDynamicSubmit(event) {
     const formData = new FormData(attachForm);
     try {
       await api(`/api/queue-items/${encodeURIComponent(itemId)}/attach-media`, { method: "POST", body: formData });
-      showToast(`Media attached to ${itemId}.`);
+      showToast(t("toast.mediaAttached", {id: itemId}));
       await loadQueuePage();
     } catch (error) { showToast(error.message, true); }
     return;
@@ -1114,7 +1108,7 @@ async function handleDynamicSubmit(event) {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action: "rethink", feedback }),
       });
-      showToast("Rethink submitted.");
+      showToast(t("toast.rethinkSubmitted"));
       await loadQueuePage();
     } catch (error) { showToast(error.message, true); }
   }
@@ -1164,7 +1158,7 @@ async function handleDynamicClick(event) {
   }
 
   if (deletePlanBtn) {
-    if (!window.confirm("Delete this plan?")) return;
+    if (!window.confirm(t("confirm.deletePlan"))) return;
     state.plans = state.plans.filter((p) => p.id !== deletePlanBtn.dataset.deletePlan);
     if (state.currentPlan?.id === deletePlanBtn.dataset.deletePlan) {
       Object.keys(state.pendingPlanMedia).forEach((id) => revokePendingPlanMedia(id));
@@ -1176,7 +1170,7 @@ async function handleDynamicClick(event) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(state.plans),
     });
-    showToast("Plan deleted.");
+    showToast(t("toast.planDeleted"));
     await loadPlans();
     return;
   }
@@ -1217,12 +1211,12 @@ async function handleDynamicClick(event) {
     wrapper.className = "inline-tag-input";
     const inp = document.createElement("input");
     inp.type = "text";
-    inp.placeholder = "tag name";
-    inp.setAttribute("aria-label", "Tag name");
+    inp.placeholder = t("ph.tagName");
+    inp.setAttribute("aria-label", t("ph.tagName"));
     const confirmBtn = document.createElement("button");
     confirmBtn.type = "button";
     confirmBtn.className = "button small primary";
-    confirmBtn.textContent = "Add";
+    confirmBtn.textContent = t("btn.add");
     const commitTag = () => {
       const val = inp.value.trim();
       if (!val || !state.currentPlan) return;
@@ -1277,14 +1271,14 @@ async function handleDynamicClick(event) {
   if (btn) {
     const itemId = btn.dataset.itemId;
     const action = btn.dataset.action;
-    if (action === "cancel" && !window.confirm("Cancel this draft?")) return;
+    if (action === "cancel" && !window.confirm(t("confirm.cancelDraft"))) return;
     try {
       await api(`/api/queue-items/${encodeURIComponent(itemId)}/action`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ action }),
       });
-      showToast(`${action} completed.`);
+      showToast(t("toast.actionComplete", {action}));
       await loadQueuePage();
     } catch (error) { showToast(error.message, true); }
     return;
@@ -1293,7 +1287,7 @@ async function handleDynamicClick(event) {
   if (retryBtn) {
     try {
       await api(`/api/queue-items/${encodeURIComponent(retryBtn.dataset.retryTarget)}/publish-jobs/${encodeURIComponent(retryBtn.dataset.target)}/retry`, { method: "POST" });
-      showToast("Retry requested.");
+      showToast(t("toast.retryRequested"));
       await loadPublishingPage();
     } catch (error) { showToast(error.message, true); }
   }
@@ -1305,14 +1299,14 @@ async function approvePlanSlotForQueue(itemId, buttonEl) {
   if (!item) return;
 
   if (!item.publishAt) {
-    showToast("Set the plan start date and day label so a publish time exists.", true);
+    showToast(t("error.setStartDate"), true);
     return;
   }
 
   const pending = state.pendingPlanMedia[itemId];
   const hasSavedMedia = Boolean(item.mediaUrl);
   if (!pending?.file && !hasSavedMedia) {
-    showToast("Choose a media file for this slot first.", true);
+    showToast(t("error.chooseMedia"), true);
     return;
   }
 
@@ -1320,7 +1314,7 @@ async function approvePlanSlotForQueue(itemId, buttonEl) {
   buttonEl.disabled = true;
   try {
     if (pending?.file) {
-      buttonEl.textContent = "Uploading…";
+      buttonEl.textContent = t("loading.uploading");
       const formData = new FormData();
       formData.append("file", pending.file);
       const uploadPayload = await api("/api/media/upload", { method: "POST", body: formData });
@@ -1330,7 +1324,7 @@ async function approvePlanSlotForQueue(itemId, buttonEl) {
       revokePendingPlanMedia(itemId);
     }
 
-    buttonEl.textContent = "Saving…";
+    buttonEl.textContent = t("loading.saving");
     item.status = "approved";
     const cid = state.currentPlan.id;
     const idx = state.plans.findIndex((p) => p.id === cid);
@@ -1343,9 +1337,9 @@ async function approvePlanSlotForQueue(itemId, buttonEl) {
       body: JSON.stringify(state.plans),
     });
 
-    buttonEl.textContent = "Loading…";
+    buttonEl.textContent = t("loading.loading");
     await loadPlans();
-    showToast("Plan saved — media and tags are on the server.");
+    showToast(t("toast.uploadComplete"));
   } catch (err) {
     showToast(err.message || "Could not approve slot", true);
   } finally {
@@ -1400,15 +1394,15 @@ function handlePlanItemPlatformChange(event) {
     if (!item.contentTypes.includes(ct)) item.contentTypes.push(ct);
   } else if (item.contentTypes.length <= 1) {
     input.checked = true;
-    showToast("Choose at least one platform.", true);
+    showToast(t("toast.oneplatform"), true);
     return;
   } else {
     item.contentTypes = item.contentTypes.filter((x) => x !== ct);
   }
   const platformDetails = input.closest(".plan-item-details");
   const summary = platformDetails?.querySelector(":scope > summary");
-  if (summary && summary.textContent.startsWith("Platforms")) {
-    summary.textContent = `Platforms (${item.contentTypes.length} selected)`;
+  if (summary) {
+    summary.textContent = t("planItem.platforms", {n: item.contentTypes.length});
   }
 }
 
@@ -1416,8 +1410,8 @@ function renderQueueItemCard(item) {
   const preview = item.media_url
     ? item.file_type === "video"
       ? `<video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video>`
-      : `<img src="${escapeAttr(item.media_url)}" alt="Queue media" loading="lazy" />`
-    : `<span class="muted" style="font-size:9px">No media</span>`;
+      : `<img src="${escapeAttr(item.media_url)}" alt="" loading="lazy" />`
+    : `<span class="muted" style="font-size:9px">${escapeHtml(t("empty.noMedia"))}</span>`;
   return card(`
     <div class="item-card">
       <div class="queue-item-row">
@@ -1425,12 +1419,12 @@ function renderQueueItemCard(item) {
         <div class="queue-item-body">
           <div class="line-meta">
             <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-            <span>${escapeHtml(item.caption || "No caption")}</span>
-            <span class="subtle">${escapeHtml(item.file_type || "photo")} · ${escapeHtml(formatDate(item.publish_at))}</span>
+            <span>${escapeHtml(item.caption || t("empty.noCaption"))}</span>
+            <span class="subtle">${escapeHtml(item.file_type || t("media.photo"))} · ${escapeHtml(formatDate(item.publish_at))}</span>
           </div>
           <div class="pill-row">
             ${renderStatusPill(item.status)}
-            ${(item.publish_targets || []).map((t) => `<span class="pill">${escapeHtml(t)}</span>`).join("")}
+            ${(item.publish_targets || []).map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
           </div>
         </div>
       </div>
@@ -1439,7 +1433,7 @@ function renderQueueItemCard(item) {
 }
 
 function renderStatusPill(status) {
-  return `<span class="pill status-${escapeAttr(status || "unknown")}">${escapeHtml(statusLabels[status] || status || "?")}</span>`;
+  return `<span class="pill status-${escapeAttr(status || "unknown")}">${escapeHtml(statusLabel(status) || "?")}</span>`;
 }
 
 function card(inner, skipWrapper = false) {

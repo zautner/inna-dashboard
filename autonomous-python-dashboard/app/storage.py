@@ -559,6 +559,7 @@ def sync_bot_queue(plans: list[dict[str, Any]]) -> None:
             }
 
     next_queue = []
+    orphaned_media: list[str] = []
     remaining_desired_ids = set(desired_plan_items.keys())
 
     for queue_item in existing_queue:
@@ -568,6 +569,9 @@ def sync_bot_queue(plans: list[dict[str, Any]]) -> None:
 
         desired = desired_plan_items.get(str(queue_item.get("plan_item_id")))
         if not desired:
+            media_url = queue_item.get("media_url")
+            if media_url:
+                orphaned_media.append(media_url)
             continue
 
         next_queue.append(
@@ -587,6 +591,17 @@ def sync_bot_queue(plans: list[dict[str, Any]]) -> None:
         next_queue.append({"id": f"pi-{plan_item_id[-8:]}", **desired})
 
     _write_json(settings.bot_queue_file, next_queue)
+
+    # Delete media files from orphaned queue items (e.g. deleted plans)
+    # Collect all media_url values still referenced by remaining queue items
+    surviving_urls = {qi.get("media_url") for qi in next_queue if qi.get("media_url")}
+    for media_url in orphaned_media:
+        if media_url in surviving_urls:
+            continue
+        file_path = get_upload_file_path(media_url)
+        if file_path and file_path.exists() and file_path.is_file():
+            file_path.unlink()
+            logger.info("Deleted orphaned media: %s", file_path.name)
 
 
 def retry_publish_target(item_id: str, target: str) -> dict[str, Any]:

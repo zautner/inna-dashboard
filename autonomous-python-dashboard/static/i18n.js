@@ -1,5 +1,5 @@
 /* ── i18n — multilingual support ── */
-const LOCALES = ["en", "uk", "he", "ru"];
+const LOCALES = ["en", "ua", "he", "ru"];
 const RTL_LOCALES = ["he"];
 
 const translations = {
@@ -273,7 +273,7 @@ const translations = {
     "lang.ru": "\u0420\u0443\u0441\u0441\u043a\u0438\u0439",
   },
 
-  uk: {
+  ua: {
     "nav.plans": "\u041f\u043b\u0430\u043d\u0438",
     "nav.queue": "\u0427\u0435\u0440\u0433\u0430",
     "nav.publishing": "\u041f\u0443\u0431\u043b\u0456\u043a\u0430\u0446\u0456\u044f",
@@ -993,7 +993,8 @@ let _locale = "en";
 
 function getLocale() {
   if (typeof localStorage !== "undefined") {
-    const saved = localStorage.getItem("ui_locale");
+    let saved = localStorage.getItem("ui_locale");
+    if (saved === "uk") { saved = "ua"; localStorage.setItem("ui_locale", "ua"); }
     if (saved && translations[saved]) _locale = saved;
   }
   return _locale;
@@ -1048,8 +1049,12 @@ function translateStaticElements() {
   });
 }
 
+const LOCALE_FLAGS = { en: "\ud83c\uddec\ud83c\udde7", ua: "\ud83c\uddfa\ud83c\udde6", he: "\ud83c\uddee\ud83c\uddf1", ru: "\ud83c\uddf7\ud83c\uddfa" };
+
 function updateLangSelector() {
-  document.querySelectorAll(".lang-btn").forEach((btn) => {
+  const flag = document.getElementById("langCurrentFlag");
+  if (flag) flag.textContent = LOCALE_FLAGS[_locale] || "";
+  document.querySelectorAll(".lang-option").forEach((btn) => {
     btn.classList.toggle("active", btn.dataset.lang === _locale);
   });
 }
@@ -1059,11 +1064,21 @@ getLocale();
 document.addEventListener("DOMContentLoaded", () => {
   updateLangSelector();
   translateStaticElements();
-  const container = document.getElementById("langSwitch");
-  if (container) {
-    container.addEventListener("click", (e) => {
-      const btn = e.target.closest("[data-lang]");
-      if (btn) setLocale(btn.dataset.lang);
+
+  const toggle = document.getElementById("langToggle");
+  const menu = document.getElementById("langMenu");
+  if (toggle && menu) {
+    toggle.addEventListener("click", (e) => {
+      e.stopPropagation();
+      menu.classList.toggle("open");
     });
+    menu.addEventListener("click", (e) => {
+      const btn = e.target.closest("[data-lang]");
+      if (btn) {
+        setLocale(btn.dataset.lang);
+        menu.classList.remove("open");
+      }
+    });
+    document.addEventListener("click", () => menu.classList.remove("open"));
   }
 });

@@ -853,40 +853,57 @@ textarea { resize: vertical; font-family: inherit; }
   border-top-color: var(--text-muted);
 }
 
-/* ── Language Switch ── */
-.lang-switch {
+/* ── Language Dropdown ── */
+.lang-dropdown {
   position: fixed;
   top: 12px;
   right: 16px;
   z-index: 50;
+}
+.lang-toggle {
   display: flex;
-  gap: 2px;
+  align-items: center;
+  gap: 4px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  border-radius: var(--radius-sm);
+  padding: 5px 10px;
+  cursor: pointer;
+  box-shadow: var(--shadow);
+  font-size: 18px;
+  line-height: 1;
+}
+.lang-toggle:hover { border-color: var(--border-strong); }
+.lang-caret { font-size: 10px; color: var(--text-muted); }
+.lang-flag { font-size: 18px; line-height: 1; }
+.lang-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 4px);
+  right: 0;
   background: var(--surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 2px;
-  box-shadow: var(--shadow);
+  box-shadow: var(--shadow-md);
+  min-width: 150px;
+  overflow: hidden;
 }
-.lang-btn {
+.lang-menu.open { display: block; }
+.lang-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
   border: none;
   background: transparent;
-  padding: 4px 10px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--text-muted);
-  border-radius: 6px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: var(--text);
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  line-height: 1.4;
+  text-align: left;
 }
-.lang-btn:hover {
-  background: var(--accent-light);
-  color: var(--accent);
-}
-.lang-btn.active {
-  background: var(--accent);
-  color: #fff;
-}
+.lang-option:hover { background: var(--accent-light); }
+.lang-option.active { background: var(--accent-light); color: var(--accent); font-weight: 600; }
 
 /* ── RTL Overrides ── */
 [dir="rtl"] .sidebar {
@@ -903,9 +920,17 @@ textarea { resize: vertical; font-family: inherit; }
   left: auto;
   right: 16px;
 }
-[dir="rtl"] .lang-switch {
+[dir="rtl"] .lang-dropdown {
   right: auto;
   left: 16px;
+}
+[dir="rtl"] .lang-menu {
+  right: auto;
+  left: 0;
+}
+[dir="rtl"] .lang-option {
+  text-align: right;
+  flex-direction: row-reverse;
 }
 [dir="rtl"] .nav-item {
   text-align: right;

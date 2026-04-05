@@ -1,3 +1,11 @@
+function uuid() {
+  if (typeof crypto !== "undefined" && crypto.randomUUID) return uuid();
+  return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    return (c === "x" ? r : (r & 0x3) | 0x8).toString(16);
+  });
+}
+
 const state = {
   activePage: "plans",
   helpDocs: [],
@@ -674,13 +682,13 @@ function generatePlanFromBuilder() {
 
   Object.keys(state.pendingPlanMedia).forEach((id) => revokePendingPlanMedia(id));
   state.currentPlan = applyDerivedScheduleToPlan({
-    id: crypto.randomUUID(),
+    id: uuid(),
     name,
     type,
     status: "open",
     startDate,
     items: reqs.map((r) => ({
-      id: crypto.randomUUID(),
+      id: uuid(),
       day: r.day,
       mediaType: r.mediaType,
       contentTypes: r.contentTypes.length ? r.contentTypes : ["Instagram Feed"],
@@ -1261,7 +1269,7 @@ async function handleDynamicClick(event) {
     if (!state.currentPlan) return;
     if (!state.currentPlan.items) state.currentPlan.items = [];
     state.currentPlan.items.push({
-      id: crypto.randomUUID(),
+      id: uuid(),
       day: "",
       mediaType: "any",
       contentTypes: ["Instagram Feed"],

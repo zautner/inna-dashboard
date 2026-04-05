@@ -1,0 +1,17 @@
+services:
+  autonomous-dashboard:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - DASHBOARD_DATA_DIR=/data
+      - UPLOADS_DIR=/data/uploads
+    ports:
+      - "8090:8090"
+    volumes:
+      - dashboard-data:/data
+    restart: unless-stopped
+
+volumes:
+  dashboard-data:

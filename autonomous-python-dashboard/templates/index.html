@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{{ app_name }}</title>
+    <link rel="stylesheet" href="/static/styles.css" />
+  </head>
+  <body>
+    <div id="app" class="app-shell">
+
+      <nav id="sidebar" class="sidebar">
+        <div class="sidebar-header">
+          <div class="sidebar-logo">
+            <span class="logo-icon">&#9670;</span>
+            <div>
+              <strong>{{ app_name }}</strong>
+              <span>Social Media Agent</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="sidebar-nav">
+          <button class="nav-item" data-page="plans">
+            <span class="nav-icon">&#9679;</span> Plans
+          </button>
+          <button class="nav-item" data-page="queue">
+            <span class="nav-icon">&#9679;</span> Queue
+          </button>
+          <button class="nav-item" data-page="publishing">
+            <span class="nav-icon">&#9679;</span> Publishing
+          </button>
+          <button class="nav-item" data-page="persona">
+            <span class="nav-icon">&#9679;</span> Persona
+          </button>
+          <button class="nav-item" data-page="help">
+            <span class="nav-icon">&#9679;</span> Help
+          </button>
+          <button class="nav-item" data-page="monitor">
+            <span class="nav-icon">&#9679;</span> Monitor
+          </button>
+        </div>
+
+        <div class="sidebar-footer">
+          <div class="sidebar-meta">
+            <span>{{ batch_size }} items/batch</span>
+            <span class="muted">{{ data_root }}</span>
+          </div>
+        </div>
+      </nav>
+
+      <main id="main-content" class="main-content">
+
+        <div id="page-plans" class="page active">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">Content</p>
+              <h2>Plans</h2>
+            </div>
+            <div class="actions">
+              <button id="newPlanButton" class="button primary" type="button">New plan</button>
+            </div>
+          </div>
+
+          <div id="pendingBanner" class="banner hidden"></div>
+
+          <div class="plan-list-page">
+            <div class="panel-header compact">
+              <h3>Your plans</h3>
+              <span class="muted">Open a plan in a window to edit</span>
+            </div>
+            <div id="savedPlansList" class="stack"></div>
+          </div>
+        </div>
+
+        <div id="page-queue" class="page">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">Queue</p>
+              <h2>Queue &amp; Processing</h2>
+            </div>
+            <div class="actions">
+              <button id="processButton" class="button primary">Process New Items</button>
+              <button id="refreshQueueButton" class="button secondary">Refresh</button>
+            </div>
+          </div>
+          <div id="processResult" class="stack"></div>
+
+          <div class="panel-header compact">
+            <h3>Queue Counts</h3>
+          </div>
+          <div id="queueCounts" class="metric-grid"></div>
+
+          <div class="panel-header compact">
+            <h3>Active Queue Items</h3>
+            <span class="muted">new, waiting_media, draft, rethinking</span>
+          </div>
+          <div id="activeQueue" class="stack"></div>
+
+          <div class="panel-header compact">
+            <h3>Drafts &amp; Rethinking</h3>
+          </div>
+          <div id="draftList" class="stack"></div>
+
+          <div class="panel-header compact">
+            <h3>Waiting For Media</h3>
+            <span class="muted">Attach files to plan items awaiting media</span>
+          </div>
+          <div id="waitingMediaList" class="stack"></div>
+        </div>
+
+        <div id="page-publishing" class="page">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">Publishing</p>
+              <h2>Publishing Overview</h2>
+            </div>
+            <div class="actions">
+              <button id="publishNowButton" class="button primary">Publish Due Items</button>
+              <button id="refreshPublishingButton" class="button secondary">Refresh</button>
+            </div>
+          </div>
+          <div id="publishResult" class="stack"></div>
+
+          <div class="panel-header compact">
+            <h3>Publishing Metrics</h3>
+          </div>
+          <div id="publishingOverview" class="metric-grid"></div>
+
+          <div class="panel-header compact">
+            <h3>Upcoming &amp; Past Publications</h3>
+          </div>
+          <div id="timelineList" class="stack"></div>
+        </div>
+
+        <div id="page-persona" class="page">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">Context</p>
+              <h2>Persona Editor</h2>
+            </div>
+            <div class="actions">
+              <button id="reloadContextButton" class="button secondary">Reload</button>
+              <button id="saveContextButton" class="button primary">Save Context</button>
+            </div>
+          </div>
+
+          <div class="two-column-grid">
+            <div>
+              <form id="contextForm" class="stack">
+                <label><span>Name</span><input name="name" type="text" /></label>
+                <label><span>Specialty</span><input name="specialty" type="text" /></label>
+                <label><span>Location</span><input name="location" type="text" /></label>
+                <label><span>Philosophy</span><textarea name="philosophy" rows="3"></textarea></label>
+                <label><span>Target Audience</span><textarea name="targetAudience" rows="2"></textarea></label>
+                <label><span>Voice Tone</span><textarea name="voiceTone" rows="2"></textarea></label>
+                <label><span>Voice Style</span><textarea name="voiceStyle" rows="2"></textarea></label>
+                <label><span>Forbidden Words (one per line)</span><textarea name="forbiddenWords" rows="4"></textarea></label>
+                <label><span>Quotes (one per line)</span><textarea name="quotes" rows="5"></textarea></label>
+              </form>
+            </div>
+            <div>
+              <div class="panel-header compact">
+                <h3>Business Snapshot</h3>
+              </div>
+              <div id="strategySummary" class="stack"></div>
+            </div>
+          </div>
+        </div>
+
+        <div id="page-help" class="page">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">Help</p>
+              <h2>Documentation</h2>
+            </div>
+          </div>
+
+          <div class="panel-header compact">
+            <h3>Bot Commands</h3>
+          </div>
+          <div id="commandReference" class="stack"></div>
+
+          <div class="panel-header compact">
+            <h3>Workspace Docs</h3>
+          </div>
+          <div id="helpDocTabs" class="tab-list"></div>
+          <pre id="helpDocContent" class="help-content"></pre>
+        </div>
+
+        <div id="page-monitor" class="page">
+          <div class="page-header">
+            <div>
+              <p class="eyebrow">Monitor</p>
+              <h2>Dashboard Monitor</h2>
+            </div>
+            <button id="refreshMonitorButton" class="button secondary">Refresh</button>
+          </div>
+
+          <div class="panel-header compact"><h3>Queue Health</h3></div>
+          <div id="monitorQueueCounts" class="metric-grid"></div>
+
+          <div class="panel-header compact"><h3>Publishing Summary</h3></div>
+          <div id="monitorPublishing" class="metric-grid"></div>
+
+          <div class="panel-header compact"><h3>Recent Queue Items</h3></div>
+          <div id="recentItems" class="stack"></div>
+
+          <div class="panel-header compact"><h3>Failed &amp; Canceled Items</h3></div>
+          <div id="failedItems" class="stack"></div>
+
+          <div class="panel-header compact"><h3>Open Plans</h3></div>
+          <div id="openPlans" class="stack"></div>
+        </div>
+
+      </main>
+    </div>
+
+    <div id="planModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-plan-modal tabindex="-1" aria-hidden="true"></div>
+      <div class="modal-panel" role="dialog" aria-modal="true" aria-labelledby="planModalTitle">
+        <div class="modal-header">
+          <h3 id="planModalTitle">Plan</h3>
+          <div class="modal-header-actions">
+            <button type="button" id="modalSavePlanButton" class="button secondary">Save</button>
+            <button type="button" class="button ghost" data-close-plan-modal>Close</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div id="planBuilder" class="form-card hidden">
+            <label>
+              <span>Plan Name</span>
+              <input id="planNameInput" type="text" placeholder="Week Plan" />
+            </label>
+            <div class="two-column">
+              <label>
+                <span>Plan Type</span>
+                <select id="planTypeInput">
+                  <option value="week">week</option>
+                  <option value="month">month</option>
+                  <option value="quarter">quarter</option>
+                </select>
+              </label>
+              <label>
+                <span>Start Date</span>
+                <input id="planStartDateInput" type="date" />
+              </label>
+            </div>
+            <p class="muted plan-builder-hint">Add one row per post slot (day + format). You can change platforms later on each item.</p>
+            <div class="panel-header compact">
+              <h3>Slots</h3>
+              <button id="addRequirementButton" class="button small ghost" type="button">Add row</button>
+            </div>
+            <div id="requirementsList" class="stack"></div>
+            <div class="actions">
+              <button id="generatePlanButton" class="button primary" type="button">Create plan</button>
+              <button id="cancelPlanBuilderButton" class="button ghost" type="button">Cancel</button>
+            </div>
+          </div>
+          <div id="currentPlanView" class="stack"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="toast" class="toast hidden"></div>
+
+    <script src="/static/app.js" defer></script>
+  </body>
+</html>

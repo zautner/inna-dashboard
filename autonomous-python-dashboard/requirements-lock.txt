@@ -1,0 +1,23 @@
+# Auto-generated from requirements.txt — do not edit manually.
+# Regenerate: pip install -r requirements.txt && pip freeze > requirements-lock.txt
+annotated-types==0.7.0
+anyio==4.13.0
+certifi==2026.2.25
+click==8.3.2
+fastapi==0.115.12
+google-auth==2.49.1
+google-genai==0.3.0
+h11==0.16.0
+idna==3.11
+Jinja2==3.1.6
+MarkupSafe==3.0.3
+pydantic==2.13.0b3
+pydantic_core==2.45.0
+python-dotenv==1.0.1
+python-multipart==0.0.20
+requests==2.33.1
+starlette==0.46.2
+typing-inspection==0.4.2
+typing_extensions==4.15.0
+urllib3==2.6.3
+uvicorn==0.34.0

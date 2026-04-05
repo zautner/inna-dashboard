@@ -67,7 +67,7 @@ def build_settings() -> Settings:
         inna_context_file=Path(os.getenv("INNA_CONTEXT_FILE", data_dir / "inna-context.json")),
         app_url=os.getenv("APP_URL", "").rstrip("/"),
         gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
-        gemini_model=os.getenv("GEMINI_MODEL", "gemini-1.5-flash"),
+        gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash-lite"),
         telegram_bot_token=os.getenv("TELEGRAM_BOT_TOKEN", ""),
         batch_size=int(os.getenv("BATCH_SIZE", "3")),
         publish_poll_interval_seconds=int(os.getenv("PUBLISH_POLL_INTERVAL_SECONDS", "30")),

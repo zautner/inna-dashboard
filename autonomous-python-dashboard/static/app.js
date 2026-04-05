@@ -52,6 +52,11 @@ function bindEvents() {
     if (e.target.closest("[data-close-plan-modal]")) closePlanModal();
   });
   document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && _reviewItem) {
+      e.preventDefault();
+      closeReviewModal();
+      return;
+    }
     if (e.key === "Escape" && state.planModalOpen) {
       e.preventDefault();
       closePlanModal();
@@ -66,6 +71,13 @@ function bindEvents() {
   document.getElementById("saveContextButton")?.addEventListener("click", saveContext);
   document.getElementById("planTypeInput")?.addEventListener("change", handlePlanTypeChange);
   document.getElementById("refreshQueueButton")?.addEventListener("click", loadQueuePage);
+  document.getElementById("reviewApproveBtn")?.addEventListener("click", handleReviewApprove);
+  document.getElementById("reviewRethinkBtn")?.addEventListener("click", handleReviewRethink);
+  document.getElementById("reviewRethinkSubmitBtn")?.addEventListener("click", handleReviewRethinkSubmit);
+  document.getElementById("reviewCancelBtn")?.addEventListener("click", handleReviewCancel);
+  document.getElementById("queueReviewModal")?.addEventListener("click", (e) => {
+    if (e.target.closest("[data-close-review-modal]")) closeReviewModal();
+  });
   document.getElementById("refreshPublishingButton")?.addEventListener("click", loadPublishingPage);
   document.getElementById("refreshMonitorButton")?.addEventListener("click", loadMonitorPage);
   document.getElementById("menuToggle")?.addEventListener("click", toggleMobileSidebar);
@@ -180,11 +192,11 @@ function navigateTo(page) {
 
 async function refreshAll() {
   if (state.activePage !== "plans") return;
-  await Promise.all([loadQueue(), loadDrafts(), loadPublishing(), loadMonitor(), loadPlans(), loadContext()]);
+  await Promise.all([loadQueue(), loadPublishing(), loadMonitor(), loadPlans(), loadContext()]);
 }
 
 async function loadQueuePage() {
-  await Promise.all([loadQueue(), loadDrafts(), loadPublishing(), loadMonitor()]);
+  await Promise.all([loadQueue(), loadPublishing(), loadMonitor()]);
 }
 
 async function loadPublishingPage() {
@@ -213,13 +225,8 @@ async function loadQueue() {
   ]);
   renderQueueCounts(counts);
   renderPendingBanner(queuePayload.pendingPlanItems || []);
-  renderActiveQueue(queuePayload.items || []);
-  renderWaitingMedia((queuePayload.items || []).filter((item) => item.status === "waiting_media"));
-}
-
-async function loadDrafts() {
-  const payload = await api("/api/queue-items?status=draft,rethinking&limit=50");
-  renderDrafts(payload.items || []);
+  const planItems = (queuePayload.items || []).filter((item) => item.plan_item_id);
+  renderActiveQueue(planItems);
 }
 
 async function loadPublishing() {
@@ -802,68 +809,6 @@ function renderActiveQueue(items) {
   items.forEach((item) => container.appendChild(renderQueueItemCard(item)));
 }
 
-function renderWaitingMedia(items) {
-  const container = document.getElementById("waitingMediaList");
-  if (!container) return;
-  container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState(t("empty.noWaitingMedia"), t("empty.noWaitingMediaHint"))); return; }
-  items.forEach((item) => {
-    container.appendChild(card(`
-      <div class="line-meta">
-        <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-        <span>${escapeHtml(item.caption || t("empty.noCaption"))}</span>
-      </div>
-      <form class="actions" data-attach-form="${escapeHtml(item.id)}">
-        <input type="file" name="file" accept="image/*,video/*" required />
-        <input type="text" name="caption" placeholder="${escapeAttr(t("ph.optionalCaption"))}" />
-        <button type="submit" class="button small primary">${escapeHtml(t("btn.attachMedia"))}</button>
-      </form>
-    `));
-  });
-}
-
-function renderDrafts(items) {
-  const container = document.getElementById("draftList");
-  if (!container) return;
-  container.innerHTML = "";
-  if (!items.length) { container.appendChild(emptyState(t("empty.noDrafts"), t("empty.noDraftsHint"))); return; }
-  items.forEach((item) => {
-    const preview = item.media_url
-      ? item.file_type === "video"
-        ? `<video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video>`
-        : `<img src="${escapeAttr(item.media_url)}" alt="Draft media" loading="lazy" />`
-      : `<span class="muted" style="font-size:9px">${escapeHtml(t("empty.noMedia"))}</span>`;
-    container.appendChild(card(`
-      <div class="item-card">
-        <div class="queue-item-row">
-          <div class="preview-frame">${preview}</div>
-          <div class="queue-item-body">
-            <div class="line-meta">
-              <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-              <span>${escapeHtml(item.caption || t("empty.noCaptionContext"))}</span>
-            </div>
-            <div class="pill-row">
-              ${renderStatusPill(item.status)}
-              ${(item.publish_targets || []).map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
-              ${(item.tags || []).map((tag) => `<span class="pill">#${escapeHtml(tag)}</span>`).join("")}
-            </div>
-          </div>
-        </div>
-        ${item.generated_text ? `<div class="ai-text-block">${escapeHtml(item.generated_text)}</div>` : `<div class="subtle">${escapeHtml(t("empty.noGeneratedText"))}</div>`}
-        <div class="actions" style="margin-top:8px">
-          <button class="button small primary" data-action="approve" data-item-id="${escapeAttr(item.id)}">${escapeHtml(t("btn.approve"))}</button>
-          <button class="button small ghost" data-toggle-rethink="${escapeAttr(item.id)}">${escapeHtml(t("btn.rethink"))}</button>
-          <button class="button small danger" data-action="cancel" data-item-id="${escapeAttr(item.id)}">${escapeHtml(t("btn.cancel"))}</button>
-        </div>
-        <form class="stack hidden" data-rethink-form="${escapeAttr(item.id)}" style="margin-top:8px">
-          <textarea name="feedback" rows="3" placeholder="${escapeAttr(t("ph.whatShouldChange"))}"></textarea>
-          <button type="submit" class="button small primary">${escapeHtml(t("btn.submitFeedback"))}</button>
-        </form>
-      </div>
-    `, true));
-  });
-}
-
 function renderPublishingOverview(payload) {
   const container = document.getElementById("publishingOverview");
   if (!container) return;
@@ -1085,37 +1030,22 @@ async function handlePublishNow() {
 }
 
 async function handleDynamicSubmit(event) {
-  const attachForm = event.target.closest("[data-attach-form]");
-  const rethinkForm = event.target.closest("[data-rethink-form]");
-  if (attachForm) {
-    event.preventDefault();
-    const itemId = attachForm.dataset.attachForm;
-    const formData = new FormData(attachForm);
+  // No-op — queue actions handled via review modal now
+}
+
+async function handleDynamicClick(event) {
+  const reviewBtn = event.target.closest("[data-review-item]");
+  if (reviewBtn) {
+    const itemId = reviewBtn.dataset.reviewItem;
     try {
-      await api(`/api/queue-items/${encodeURIComponent(itemId)}/attach-media`, { method: "POST", body: formData });
-      showToast(t("toast.mediaAttached", {id: itemId}));
-      await loadQueuePage();
+      const payload = await api(`/api/queue-items?status=new,waiting_media,draft,rethinking&limit=200`);
+      const item = (payload.items || []).find((i) => i.id === itemId);
+      if (item) openReviewModal(item);
+      else showToast("Item not found", true);
     } catch (error) { showToast(error.message, true); }
     return;
   }
 
-  if (rethinkForm) {
-    event.preventDefault();
-    const itemId = rethinkForm.dataset.rethinkForm;
-    const feedback = new FormData(rethinkForm).get("feedback");
-    try {
-      await api(`/api/queue-items/${encodeURIComponent(itemId)}/action`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ action: "rethink", feedback }),
-      });
-      showToast(t("toast.rethinkSubmitted"));
-      await loadQueuePage();
-    } catch (error) { showToast(error.message, true); }
-  }
-}
-
-async function handleDynamicClick(event) {
   const btn = event.target.closest("[data-action]");
   const toggleRethink = event.target.closest("[data-toggle-rethink]");
   const retryBtn = event.target.closest("[data-retry-target]");
@@ -1408,29 +1338,137 @@ function handlePlanItemPlatformChange(event) {
 }
 
 function renderQueueItemCard(item) {
-  const preview = item.media_url
-    ? item.file_type === "video"
-      ? `<video muted playsinline preload="metadata" src="${escapeAttr(item.media_url)}"></video>`
-      : `<img src="${escapeAttr(item.media_url)}" alt="" loading="lazy" />`
-    : `<span class="muted" style="font-size:9px">${escapeHtml(t("empty.noMedia"))}</span>`;
-  return card(`
-    <div class="item-card">
-      <div class="queue-item-row">
-        <div class="preview-frame">${preview}</div>
-        <div class="queue-item-body">
-          <div class="line-meta">
-            <strong>${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
-            <span>${escapeHtml(item.caption || t("empty.noCaption"))}</span>
-            <span class="subtle">${escapeHtml(item.file_type || t("media.photo"))} · ${escapeHtml(formatDate(item.publish_at))}</span>
-          </div>
-          <div class="pill-row">
-            ${renderStatusPill(item.status)}
-            ${(item.publish_targets || []).map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
-          </div>
-        </div>
+  const textPreview = item.generated_text
+    ? item.generated_text.length > 120 ? item.generated_text.slice(0, 120) + "…" : item.generated_text
+    : t("queue.noTextYet");
+  const hasText = !!item.generated_text;
+  const node = document.createElement("div");
+  node.className = `queue-card queue-card-status-${escapeAttr(item.status || "new")}`;
+  node.innerHTML = `
+    <div class="queue-card-header">
+      <strong class="queue-card-title">${escapeHtml(item.plan_name || item.caption || item.id)}</strong>
+      <div class="pill-row">
+        ${renderStatusPill(item.status)}
+        ${(item.publish_targets || []).map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
       </div>
     </div>
-  `, true);
+    <p class="queue-card-text ${hasText ? "" : "muted"}">${escapeHtml(textPreview)}</p>
+    <div class="queue-card-footer">
+      <button type="button" class="button small primary" data-review-item="${escapeAttr(item.id)}">${escapeHtml(t("queue.reviewEdit"))}</button>
+      <span class="queue-card-date subtle">${escapeHtml(formatDate(item.publish_at))}</span>
+    </div>
+  `;
+  return node;
+}
+
+// ---------------------------------------------------------------------------
+// Queue Review Modal
+// ---------------------------------------------------------------------------
+
+let _reviewItem = null;
+
+function openReviewModal(item) {
+  _reviewItem = item;
+  const modal = document.getElementById("queueReviewModal");
+  if (!modal) return;
+  modal.classList.remove("hidden");
+  modal.setAttribute("aria-hidden", "false");
+
+  document.getElementById("reviewModalSubtitle").textContent = item.plan_name || item.caption || item.id;
+
+  const meta = document.getElementById("reviewModalMeta");
+  if (meta) {
+    meta.innerHTML = `
+      <div class="pill-row">
+        ${renderStatusPill(item.status)}
+        ${(item.publish_targets || []).map((pt) => `<span class="pill">${escapeHtml(pt)}</span>`).join("")}
+      </div>
+      <span class="subtle">${escapeHtml(formatDate(item.publish_at))}</span>
+    `;
+  }
+
+  const textarea = document.getElementById("reviewTextArea");
+  if (textarea) textarea.value = item.generated_text || "";
+
+  document.getElementById("reviewRethinkSection")?.classList.add("hidden");
+  document.getElementById("reviewRethinkBtn")?.classList.remove("hidden");
+  document.getElementById("reviewRethinkSubmitBtn")?.classList.add("hidden");
+  const rethinkArea = document.getElementById("reviewRethinkArea");
+  if (rethinkArea) rethinkArea.value = "";
+}
+
+function closeReviewModal() {
+  _reviewItem = null;
+  const modal = document.getElementById("queueReviewModal");
+  if (!modal) return;
+  modal.classList.add("hidden");
+  modal.setAttribute("aria-hidden", "true");
+}
+
+async function handleReviewApprove() {
+  if (!_reviewItem) return;
+  const textarea = document.getElementById("reviewTextArea");
+  const newText = textarea?.value || "";
+  const btn = document.getElementById("reviewApproveBtn");
+  btnLoading(btn, true, t("loading.approving"));
+  try {
+    if (newText !== (_reviewItem.generated_text || "")) {
+      await api(`/api/queue-items/${encodeURIComponent(_reviewItem.id)}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ generated_text: newText }),
+      });
+    }
+    await api(`/api/queue-items/${encodeURIComponent(_reviewItem.id)}/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "approve" }),
+    });
+    showToast(t("toast.actionComplete", { action: "approve" }));
+    closeReviewModal();
+    await loadQueuePage();
+  } catch (error) { showToast(error.message, true); }
+  finally { btnLoading(btn, false); }
+}
+
+async function handleReviewRethink() {
+  document.getElementById("reviewRethinkSection")?.classList.remove("hidden");
+  document.getElementById("reviewRethinkBtn")?.classList.add("hidden");
+  document.getElementById("reviewRethinkSubmitBtn")?.classList.remove("hidden");
+  document.getElementById("reviewRethinkArea")?.focus();
+}
+
+async function handleReviewRethinkSubmit() {
+  if (!_reviewItem) return;
+  const feedback = document.getElementById("reviewRethinkArea")?.value?.trim() || "";
+  const btn = document.getElementById("reviewRethinkSubmitBtn");
+  btnLoading(btn, true, t("loading.rethinking"));
+  try {
+    await api(`/api/queue-items/${encodeURIComponent(_reviewItem.id)}/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "rethink", feedback }),
+    });
+    showToast(t("toast.rethinkSubmitted"));
+    closeReviewModal();
+    await loadQueuePage();
+  } catch (error) { showToast(error.message, true); }
+  finally { btnLoading(btn, false); }
+}
+
+async function handleReviewCancel() {
+  if (!_reviewItem) return;
+  if (!window.confirm(t("confirm.cancelItem"))) return;
+  try {
+    await api(`/api/queue-items/${encodeURIComponent(_reviewItem.id)}/action`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "cancel" }),
+    });
+    showToast(t("toast.actionComplete", { action: "cancel" }));
+    closeReviewModal();
+    await loadQueuePage();
+  } catch (error) { showToast(error.message, true); }
 }
 
 function renderStatusPill(status) {

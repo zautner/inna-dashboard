@@ -52,6 +52,10 @@ class QueueActionPayload(BaseModel):
     feedback: str | None = None
 
 
+class QueueItemTextPayload(BaseModel):
+    generated_text: str
+
+
 class ProcessPayload(BaseModel):
     batch_size: int | None = None
 
@@ -280,6 +284,15 @@ async def process_queue(payload: ProcessPayload | None = None) -> dict[str, Any]
         "waitingForMedia": waiting_for_media,
         "items": results,
     }
+
+
+@app.put("/api/queue-items/{item_id}")
+async def update_queue_item_text(item_id: str, payload: QueueItemTextPayload) -> dict[str, Any]:
+    item = read_queue_item(item_id)
+    if not item:
+        raise HTTPException(status_code=404, detail="Queue item not found.")
+    updated = update_queue_item(item_id, {"generated_text": payload.generated_text})
+    return {"item": updated}
 
 
 @app.post("/api/queue-items/{item_id}/action")

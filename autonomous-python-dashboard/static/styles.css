@@ -1003,3 +1003,124 @@ textarea { resize: vertical; font-family: inherit; }
     margin-right: 0;
   }
 }
+
+/* ── Queue Cards (redesign) ── */
+.queue-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 12px;
+  margin-top: 8px;
+}
+.queue-card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--border-strong);
+  box-shadow: var(--shadow);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+.queue-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-1px);
+}
+.queue-card-status-new { border-left-color: var(--accent); }
+.queue-card-status-waiting_media { border-left-color: var(--warning); }
+.queue-card-status-draft { border-left-color: #8b5cf6; }
+.queue-card-status-rethinking { border-left-color: var(--warning); }
+.queue-card-status-approved { border-left-color: var(--success); }
+.queue-card-status-canceled { border-left-color: var(--danger); }
+
+.queue-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.queue-card-title {
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+.queue-card-text {
+  font-size: 13px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  margin: 0;
+}
+.queue-card-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.queue-card-date {
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* ── Review Modal ── */
+.review-modal-panel {
+  width: min(640px, 100%);
+}
+.review-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.review-text-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 12px;
+}
+.review-text-label span {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+.review-text-label textarea {
+  font-size: 14px;
+  line-height: 1.6;
+  resize: vertical;
+  min-height: 120px;
+}
+.modal-footer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  background: var(--surface);
+  flex-shrink: 0;
+}
+
+/* RTL: queue cards */
+[dir="rtl"] .queue-card {
+  border-left: 1px solid var(--border);
+  border-right: 4px solid var(--border-strong);
+}
+[dir="rtl"] .queue-card-status-new { border-right-color: var(--accent); }
+[dir="rtl"] .queue-card-status-waiting_media { border-right-color: var(--warning); }
+[dir="rtl"] .queue-card-status-draft { border-right-color: #8b5cf6; }
+[dir="rtl"] .queue-card-status-rethinking { border-right-color: var(--warning); }
+[dir="rtl"] .queue-card-status-approved { border-right-color: var(--success); }
+[dir="rtl"] .queue-card-status-canceled { border-right-color: var(--danger); }
+[dir="rtl"] .queue-card-header { flex-direction: row-reverse; }
+[dir="rtl"] .queue-card-footer { flex-direction: row-reverse; }
+[dir="rtl"] .review-meta { flex-direction: row-reverse; }
+[dir="rtl"] .modal-footer { flex-direction: row-reverse; }

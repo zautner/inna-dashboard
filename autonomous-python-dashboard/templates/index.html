@@ -106,22 +106,7 @@
           </div>
           <div id="queueCounts" class="metric-grid"></div>
 
-          <div class="panel-header compact">
-            <h3 data-i18n="queue.activeItems">Active Queue Items</h3>
-            <span class="muted" data-i18n="queue.activeHint">new, waiting_media, draft, rethinking</span>
-          </div>
-          <div id="activeQueue" class="stack"></div>
-
-          <div class="panel-header compact">
-            <h3 data-i18n="queue.drafts">Drafts &amp; Rethinking</h3>
-          </div>
-          <div id="draftList" class="stack"></div>
-
-          <div class="panel-header compact">
-            <h3 data-i18n="queue.waitingMedia">Waiting For Media</h3>
-            <span class="muted" data-i18n="queue.waitingMediaHint">Attach files to plan items awaiting media</span>
-          </div>
-          <div id="waitingMediaList" class="stack"></div>
+          <div id="activeQueue" class="queue-grid"></div>
         </div>
 
         <div id="page-publishing" class="page">
@@ -273,6 +258,41 @@
             </div>
           </div>
           <div id="currentPlanView" class="stack"></div>
+        </div>
+      </div>
+    </div>
+
+    <div id="queueReviewModal" class="modal hidden" aria-hidden="true">
+      <div class="modal-backdrop" data-close-review-modal></div>
+      <div class="modal-panel review-modal-panel" role="dialog" aria-modal="true" aria-labelledby="reviewModalTitle">
+        <div class="modal-header">
+          <div>
+            <h3 id="reviewModalTitle" data-i18n="modal.reviewTitle">Review Queue Item</h3>
+            <span id="reviewModalSubtitle" class="muted"></span>
+          </div>
+          <div class="modal-header-actions">
+            <button type="button" class="button ghost" data-close-review-modal data-i18n="btn.close">Close</button>
+          </div>
+        </div>
+        <div class="modal-body">
+          <div id="reviewModalMeta" class="review-meta"></div>
+          <label class="review-text-label">
+            <span data-i18n="queue.editText">AI-Generated Text</span>
+            <textarea id="reviewTextArea" rows="8"></textarea>
+          </label>
+          <div id="reviewRethinkSection" class="hidden">
+            <label class="review-text-label">
+              <span data-i18n="queue.rethinkFeedback">Feedback for AI</span>
+              <textarea id="reviewRethinkArea" rows="3" data-i18n-placeholder="ph.whatShouldChange"></textarea>
+            </label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" id="reviewApproveBtn" class="button primary" data-i18n="btn.approve">Approve</button>
+          <button type="button" id="reviewRethinkBtn" class="button secondary" data-i18n="btn.rethink">Rethink</button>
+          <button type="button" id="reviewRethinkSubmitBtn" class="button primary hidden" data-i18n="btn.submitFeedback">Submit Feedback</button>
+          <div style="flex:1"></div>
+          <button type="button" id="reviewCancelBtn" class="button small danger" data-i18n="btn.cancel">Cancel</button>
         </div>
       </div>
     </div>
